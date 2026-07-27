@@ -751,6 +751,7 @@ body.racing #newBtn { opacity: .4; pointer-events: none; }
   border: 1px solid var(--button-border);
   color: var(--ink);
   cursor: pointer;
+  overflow: hidden;
 }
 .streak-badge:hover { background: var(--button-hover); }
 
@@ -759,27 +760,28 @@ body.racing #newBtn { opacity: .4; pointer-events: none; }
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 100%;
-  height: 100%;
+  width: 28px;
+  height: 28px;
 }
 
 .flame-svg {
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   color: var(--ink);
-  opacity: 0.9;
+  opacity: 1;
 }
 
 .streak-num-overlay {
   position: absolute;
-  top: 54%;
+  top: 58%;
   left: 50%;
   transform: translate(-50%, -50%);
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 900;
   color: var(--bg);
   pointer-events: none;
   line-height: 1;
+  letter-spacing: -0.5px;
 }
 
 /* ---------------- leaderboard modal ---------------- */
