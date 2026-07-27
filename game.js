@@ -73,7 +73,13 @@
 
   function dailySeed() {
     const d = new Date();
-    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+    const str = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+    let hash = 2166136261;
+    for (let i = 0; i < str.length; i++) {
+      hash ^= str.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+    return (hash >>> 0);
   }
 
   function blankState(puzzle, label, kind) {
