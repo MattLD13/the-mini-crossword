@@ -293,15 +293,29 @@
 <div class="modal-backdrop" id="leaderboardModal">
   <div class="modal-card leaderboard-card">
     <div class="stats-header">
-      <h2>🏆 Leaderboard</h2>
+      <h2>🏆 Leaderboards</h2>
       <button class="modal-close-icon" id="lbCloseBtn">&times;</button>
+    </div>
+
+    <div class="lb-controls-wrap">
+      <div class="lb-period-tabs">
+        <button class="lb-tab active" data-lbperiod="daily">Daily 📅</button>
+        <button class="lb-tab" data-lbperiod="alltime">All-Time 🏆</button>
+      </div>
+
+      <div class="lb-diff-tabs">
+        <button class="lb-diff-tab active" data-lbdiff="medium">Medium</button>
+        <button class="lb-diff-tab" data-lbdiff="easy">Easy</button>
+        <button class="lb-diff-tab" data-lbdiff="hard">Hard</button>
+        <button class="lb-diff-tab" data-lbdiff="extreme">Extreme</button>
+      </div>
     </div>
 
     <div class="lb-table-header">
       <span class="lb-col-rank">#</span>
       <span class="lb-col-name">Player</span>
       <span class="lb-col-streak">Streak</span>
-      <span class="lb-col-time">Best Time</span>
+      <span class="lb-col-time">Time</span>
     </div>
 
     <div class="lb-list" id="lbList">

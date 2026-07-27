@@ -1059,20 +1059,46 @@
     });
   }
 
-  function renderLeaderboard() {
+  let activeLbPeriod = 'daily';
+  let activeLbDiff = 'medium';
+
+  function renderLeaderboard(period, diff) {
+    if (period) activeLbPeriod = period;
+    if (diff) activeLbDiff = diff;
+
+    document.querySelectorAll('.lb-tab').forEach(function (tab) {
+      tab.classList.toggle('active', tab.dataset.lbperiod === activeLbPeriod);
+    });
+    document.querySelectorAll('.lb-diff-tab').forEach(function (tab) {
+      tab.classList.toggle('active', tab.dataset.lbdiff === activeLbDiff);
+    });
+
     const p = loadProfile() || defaultProfile();
     const myName = p.name || 'You';
+    const today = new Date().toISOString().split('T')[0];
+
+    const targetDiff = activeLbDiff;
+    const isDailyMode = activeLbPeriod === 'daily';
+
+    let myMatchingHistory = (p.history || []).filter(function (h) {
+      const matchDiff = !h.difficulty || h.difficulty === targetDiff;
+      if (!matchDiff) return false;
+      if (isDailyMode) return h.date === today;
+      return true;
+    });
 
     let bestTime = null;
-    if (p.history && p.history.length > 0) {
-      bestTime = p.history.reduce(function (min, h) {
+    if (myMatchingHistory.length > 0) {
+      bestTime = myMatchingHistory.reduce(function (min, h) {
         return (min === null || (h.seconds && h.seconds < min)) ? h.seconds : min;
       }, null);
     }
 
+    const myStreakVal = isDailyMode ? (p.streak || 0) : (p.bestStreak || 0);
+
     const meEntry = {
       name: myName,
-      streak: p.streak || 0,
+      streak: myStreakVal,
       bestTime: bestTime ? formatTime(bestTime) : '--:--',
       seconds: bestTime || 9999,
       isMe: true
@@ -1085,7 +1111,7 @@
         if (pl.name !== myName) {
           entries.push({
             name: pl.name,
-            streak: Math.floor(Math.random() * 4) + 1,
+            streak: isDailyMode ? (Math.floor(Math.random() * 5) + 1) : (Math.floor(Math.random() * 12) + 2),
             bestTime: pl.finished ? formatTime(pl.time || 0) : 'Active',
             seconds: pl.finished ? (pl.time || 999) : 9999,
             isMe: false
@@ -1095,6 +1121,9 @@
     }
 
     entries.sort(function (a, b) {
+      const scoreA = (a.seconds < 9999 ? (10000 - a.seconds) : 0) + (a.streak * 250);
+      const scoreB = (b.seconds < 9999 ? (10000 - b.seconds) : 0) + (b.streak * 250);
+      if (scoreA !== scoreB) return scoreB - scoreA;
       if (a.seconds !== b.seconds) return a.seconds - b.seconds;
       return b.streak - a.streak;
     });
@@ -1149,9 +1178,21 @@
     });
 
     const openLeaderboard = function () {
-      renderLeaderboard();
+      renderLeaderboard(activeLbPeriod, currentDifficulty());
       document.getElementById('leaderboardModal').classList.add('on');
     };
+
+    document.querySelectorAll('.lb-tab').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        renderLeaderboard(tab.dataset.lbperiod, activeLbDiff);
+      });
+    });
+
+    document.querySelectorAll('.lb-diff-tab').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        renderLeaderboard(activeLbPeriod, tab.dataset.lbdiff);
+      });
+    });
 
     const lbBtn = document.getElementById('leaderboardBtn');
     if (lbBtn) lbBtn.addEventListener('click', openLeaderboard);
