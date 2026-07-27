@@ -44,9 +44,20 @@
     </div>
 
     <div class="header-controls">
-      <button class="icon-btn streak-badge" id="statsBtn" title="Your Stats & Profile" aria-label="Your Stats & Profile">
-        <span class="fire-icon">🔥</span>
-        <span id="streakHeaderCount">0</span>
+      <button class="icon-btn streak-badge" id="statsBtn" title="Your Stats & Leaderboard" aria-label="Your Stats & Leaderboard">
+        <div class="flame-container">
+          <svg class="flame-svg" viewBox="0 0 24 24" width="24" height="24">
+            <path d="M12 23c-4.97 0-9-3.58-9-8 0-4.14 3.73-7.58 6.47-10.42.38-.4 1.03-.4 1.41 0C13.62 7.42 18 10.86 18 15c0 4.42-2.69 8-6 8zm0-18.78C9.52 6.78 5 10.46 5 15c0 3.31 3.13 6 7 6s5-2.69 5-6c0-4.54-4.52-8.22-7-10.78z" fill="currentColor"/>
+            <path d="M12 21c-2.76 0-5-2.01-5-4.5 0-2.4 2.1-4.4 3.6-5.9.2-.2.5-.2.7 0 1.5 1.5 3.7 3.5 3.7 5.9 0 2.49-1.79 4.5-4 4.5z" fill="currentColor"/>
+          </svg>
+          <span class="streak-num-overlay" id="streakHeaderCount">0</span>
+        </div>
+      </button>
+
+      <button class="icon-btn" id="leaderboardBtn" title="Leaderboard" aria-label="Leaderboard">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 20V10M12 20V4M6 20v-6"></path>
+        </svg>
       </button>
 
       <button class="icon-btn" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
@@ -209,6 +220,7 @@
 
 <div class="modal-backdrop" id="versusModal">
   <div class="modal-card versus-card">
+    <button class="modal-close-icon vs-close-corner" id="vsCloseBtn" aria-label="Close Versus Menu">&times;</button>
     <h2 id="versusTitle">Versus</h2>
 
     <div id="versusSetup">
@@ -267,6 +279,28 @@
       <button class="btn-primary" id="modalNew">New Puzzle</button>
       <button class="btn-ghost" id="modalClose">Keep Looking</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="leaderboardModal">
+  <div class="modal-card leaderboard-card">
+    <div class="stats-header">
+      <h2>🏆 Leaderboard</h2>
+      <button class="modal-close-icon" id="lbCloseBtn">&times;</button>
+    </div>
+
+    <div class="lb-table-header">
+      <span class="lb-col-rank">#</span>
+      <span class="lb-col-name">Player</span>
+      <span class="lb-col-streak">Streak</span>
+      <span class="lb-col-time">Best Time</span>
+    </div>
+
+    <div class="lb-list" id="lbList">
+      <!-- Populated dynamically by game.js -->
+    </div>
+
+    <button class="btn-ghost full-width" id="lbCloseBottomBtn">Close</button>
   </div>
 </div>
 

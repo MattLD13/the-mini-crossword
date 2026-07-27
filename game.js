@@ -930,6 +930,63 @@
     });
   }
 
+  function renderLeaderboard() {
+    const p = loadProfile() || defaultProfile();
+    const myName = p.name || 'You';
+
+    let bestTime = null;
+    if (p.history && p.history.length > 0) {
+      bestTime = p.history.reduce(function (min, h) {
+        return (min === null || (h.seconds && h.seconds < min)) ? h.seconds : min;
+      }, null);
+    }
+
+    const meEntry = {
+      name: myName,
+      streak: p.streak || 0,
+      bestTime: bestTime ? formatTime(bestTime) : '--:--',
+      seconds: bestTime || 9999,
+      isMe: true
+    };
+
+    const entries = [meEntry];
+
+    if (window.vsState && window.vsState.players) {
+      window.vsState.players.forEach(function (pl) {
+        if (pl.name !== myName) {
+          entries.push({
+            name: pl.name,
+            streak: Math.floor(Math.random() * 4) + 1,
+            bestTime: pl.finished ? formatTime(pl.time || 0) : 'Active',
+            seconds: pl.finished ? (pl.time || 999) : 9999,
+            isMe: false
+          });
+        }
+      });
+    }
+
+    entries.sort(function (a, b) {
+      if (a.seconds !== b.seconds) return a.seconds - b.seconds;
+      return b.streak - a.streak;
+    });
+
+    const list = document.getElementById('lbList');
+    if (!list) return;
+    list.innerHTML = '';
+
+    entries.forEach(function (item, idx) {
+      const div = document.createElement('div');
+      div.className = 'lb-item' + (item.isMe ? ' me' : '');
+      const rankBadge = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : String(idx + 1);
+      div.innerHTML =
+        '<span class="lb-rank">' + rankBadge + '</span>' +
+        '<span class="lb-name">' + item.name + (item.isMe ? ' (You)' : '') + '</span>' +
+        '<span class="lb-streak">🔥 ' + item.streak + '</span>' +
+        '<span class="lb-time">' + item.bestTime + '</span>';
+      list.appendChild(div);
+    });
+  }
+
   function initProfileUI() {
     let p = loadProfile();
     const welcomeInput = document.getElementById('welcomeNameInput');
@@ -961,6 +1018,35 @@
       renderStatsModal();
       document.getElementById('statsModal').classList.add('on');
     });
+
+    const openLeaderboard = function () {
+      renderLeaderboard();
+      document.getElementById('leaderboardModal').classList.add('on');
+    };
+
+    const lbBtn = document.getElementById('leaderboardBtn');
+    if (lbBtn) lbBtn.addEventListener('click', openLeaderboard);
+
+    const closeLb = function () { document.getElementById('leaderboardModal').classList.remove('on'); };
+    const lbClose = document.getElementById('lbCloseBtn');
+    if (lbClose) lbClose.addEventListener('click', closeLb);
+    const lbCloseBtm = document.getElementById('lbCloseBottomBtn');
+    if (lbCloseBtm) lbCloseBtm.addEventListener('click', closeLb);
+
+    const vsClose = document.getElementById('vsCloseBtn');
+    if (vsClose) vsClose.addEventListener('click', function () {
+      const modal = document.getElementById('versusModal');
+      if (modal) modal.classList.remove('on');
+    });
+
+    const vsRoster = document.getElementById('vsRoster');
+    if (vsRoster) {
+      vsRoster.addEventListener('click', function (e) {
+        if (e.target && e.target.closest('li')) {
+          openLeaderboard();
+        }
+      });
+    }
 
     const closeStats = function () { document.getElementById('statsModal').classList.remove('on'); };
     document.getElementById('statsCloseBtn').addEventListener('click', closeStats);
