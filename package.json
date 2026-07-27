@@ -1,0 +1,12 @@
+{
+  "name": "the-mini-crossword",
+  "version": "1.0.0",
+  "description": "The Mini Crossword with multiplayer Versus mode",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["crossword", "mini", "game", "versus"],
+  "author": "",
+  "license": "ISC"
+}
