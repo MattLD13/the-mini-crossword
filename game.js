@@ -524,6 +524,8 @@
 
   function reveal(scope) {
     state.usedHelp = true;
+    state.seconds += 15;
+    paintTimer();
     targetCells(scope).forEach(function (cell) {
       const answer = state.puzzle.solution[cell.r][cell.c];
       if (state.entries[cell.r][cell.c] !== answer) {
@@ -637,25 +639,36 @@
     const btnCheck = document.getElementById('checkMenuBtn');
     const btnHint = document.getElementById('hintMenuBtn');
     const btnReveal = document.getElementById('revealMenuBtn');
+    const hintList = document.getElementById('hintMenuList');
     const revealList = document.getElementById('revealMenuList');
     if (race.on) {
       if (btnCheck) btnCheck.innerHTML = 'Check (' + (race.checks || 0) + ')<span class="caret"></span>';
-      if (btnHint) btnHint.innerHTML = 'Hint (' + (race.hints || 0) + ') 💡<span class="caret"></span>';
+      if (btnHint) btnHint.innerHTML = 'Hint (' + (race.hints || 0) + ')<span class="caret"></span>';
       if (btnReveal) btnReveal.innerHTML = 'Reveal (' + (race.reveals || 0) + ')<span class="caret"></span>';
+      if (hintList) {
+        hintList.innerHTML =
+          '<button data-action="hint-clue">Clue Tip (+5s)</button>' +
+          '<button data-action="hint-vowels">Vowel Count (+5s)</button>';
+      }
       if (revealList) {
         revealList.innerHTML =
-          '<button data-action="reveal-square">Square (1★)</button>' +
-          '<button data-action="reveal-word">Word (2★)</button>';
+          '<button data-action="reveal-square">Square (+15s, 1★)</button>' +
+          '<button data-action="reveal-word">Word (+15s, 2★)</button>';
       }
     } else {
       if (btnCheck) btnCheck.innerHTML = 'Check<span class="caret"></span>';
-      if (btnHint) btnHint.innerHTML = 'Hint 💡<span class="caret"></span>';
+      if (btnHint) btnHint.innerHTML = 'Hint<span class="caret"></span>';
       if (btnReveal) btnReveal.innerHTML = 'Reveal<span class="caret"></span>';
+      if (hintList) {
+        hintList.innerHTML =
+          '<button data-action="hint-clue">Clue Tip (+5s)</button>' +
+          '<button data-action="hint-vowels">Vowel Count (+5s)</button>';
+      }
       if (revealList) {
         revealList.innerHTML =
-          '<button data-action="reveal-square">Square</button>' +
-          '<button data-action="reveal-word">Word</button>' +
-          '<button data-action="reveal-puzzle">Puzzle</button>';
+          '<button data-action="reveal-square">Square (+15s)</button>' +
+          '<button data-action="reveal-word">Word (+15s)</button>' +
+          '<button data-action="reveal-puzzle">Puzzle (+15s)</button>';
       }
     }
   }
@@ -732,25 +745,17 @@
     const answer = entry.answer;
     const num = entry.num + (entry.dir === 'across' ? 'A' : 'D');
 
+    state.usedHelp = true;
+    state.seconds += 5;
+    paintTimer();
+
     if (scope === 'clue') {
       const vowels = (answer.match(/[AEIOU]/gi) || []).length;
       const firstLetter = answer[0];
-      showNotice('💡 ' + num + ' Hint: ' + answer.length + ' letters, starts with "' + firstLetter + '" (' + vowels + ' vowel' + (vowels === 1 ? '' : 's') + ')');
+      showNotice(num + ' Hint: ' + answer.length + ' letters, starts with "' + firstLetter + '" (' + vowels + ' vowel' + (vowels === 1 ? '' : 's') + ') [+5s]');
     } else if (scope === 'vowels') {
       const vowels = (answer.match(/[AEIOU]/gi) || []).length;
-      showNotice('🔍 ' + num + ' contains ' + vowels + ' vowel' + (vowels === 1 ? '' : 's') + '.');
-    } else if (scope === 'letter') {
-      let emptyCell = entry.cells.find(function (c) {
-        return !state.entries[c.r][c.c] || state.marks[c.r][c.c].wrong;
-      });
-      if (!emptyCell) emptyCell = entry.cells[0];
-      const ansChar = state.puzzle.solution[emptyCell.r][emptyCell.c];
-      state.entries[emptyCell.r][emptyCell.c] = ansChar;
-      state.marks[emptyCell.r][emptyCell.c].revealed = true;
-      state.usedHelp = true;
-      render();
-      showNotice('🔤 Filled letter "' + ansChar + '" in ' + num + '!');
-      if (checkSolved()) return;
+      showNotice(num + ' contains ' + vowels + ' vowel' + (vowels === 1 ? '' : 's') + '. [+5s]');
     }
   }
 
