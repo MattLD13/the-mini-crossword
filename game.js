@@ -635,10 +635,12 @@
 
   function updateVersusToolBadges() {
     const btnCheck = document.getElementById('checkMenuBtn');
+    const btnHint = document.getElementById('hintMenuBtn');
     const btnReveal = document.getElementById('revealMenuBtn');
     const revealList = document.getElementById('revealMenuList');
     if (race.on) {
       if (btnCheck) btnCheck.innerHTML = 'Check (' + (race.checks || 0) + ')<span class="caret"></span>';
+      if (btnHint) btnHint.innerHTML = 'Hint (' + (race.hints || 0) + ') 💡<span class="caret"></span>';
       if (btnReveal) btnReveal.innerHTML = 'Reveal (' + (race.reveals || 0) + ')<span class="caret"></span>';
       if (revealList) {
         revealList.innerHTML =
@@ -647,6 +649,7 @@
       }
     } else {
       if (btnCheck) btnCheck.innerHTML = 'Check<span class="caret"></span>';
+      if (btnHint) btnHint.innerHTML = 'Hint 💡<span class="caret"></span>';
       if (btnReveal) btnReveal.innerHTML = 'Reveal<span class="caret"></span>';
       if (revealList) {
         revealList.innerHTML =
@@ -672,6 +675,14 @@
           race.checks = (race.checks || 0) + diff;
           race.lastCheckSec = earnedChecks;
           showNotice('+1 Check Credit earned! (' + race.checks + ' available)');
+          updateVersusToolBadges();
+        }
+        const earnedHints = Math.floor(state.seconds / 10);
+        if (earnedHints > race.lastHintSec) {
+          const diff = earnedHints - race.lastHintSec;
+          race.hints = (race.hints || 0) + diff;
+          race.lastHintSec = earnedHints;
+          showNotice('+1 Hint Credit earned! (' + race.hints + ' available)');
           updateVersusToolBadges();
         }
         const earnedReveals = Math.floor(state.seconds / 60);
@@ -783,6 +794,13 @@
         reveal(scope);
         reportProgress(true);
       } else if (verb === 'hint') {
+        if ((race.hints || 0) <= 0) {
+          showNotice('No Hint credits available yet! (+1 earned every 10s)');
+          document.querySelectorAll('.menu').forEach(function (m) { m.classList.remove('open'); });
+          return;
+        }
+        race.hints--;
+        updateVersusToolBadges();
         giveHint(scope);
       } else if (verb === 'clear') {
         clear(scope);
@@ -821,7 +839,7 @@
 
   /* ---------------- versus ---------------- */
 
-  const race = { on: false, sendTimer: null, lastSent: -1, checks: 0, reveals: 0, lastCheckSec: 0, lastRevealSec: 0 };
+  const race = { on: false, sendTimer: null, lastSent: -1, checks: 0, hints: 0, reveals: 0, lastCheckSec: 0, lastHintSec: 0, lastRevealSec: 0 };
 
   function whiteCellCount() {
     let n = 0;
@@ -858,8 +876,10 @@
     race.on = true;
     race.lastSent = -1;
     race.checks = 1;
+    race.hints = 1;
     race.reveals = 0;
     race.lastCheckSec = 0;
+    race.lastHintSec = 0;
     race.lastRevealSec = 0;
     updateVersusToolBadges();
     document.body.classList.add('racing');
@@ -884,6 +904,7 @@
   function endRace() {
     race.on = false;
     race.checks = 0;
+    race.hints = 0;
     race.reveals = 0;
     updateVersusToolBadges();
     clearTimeout(race.sendTimer);
@@ -1459,9 +1480,30 @@
       hideVersusModal();
       beginRace();
     }
-    if (vs.finished && race.on && state && !state.solved) {
-      reveal('puzzle');
-      showNotice('Race finished! Full puzzle solution revealed.');
+    if (vs.started && race.on && state && !state.solved) {
+      const players = vs.players || [];
+      const totalPlayers = players.length;
+      const winner = players.find(function (p) { return p.place === 1; });
+      const finishedOtherPlayers = players.filter(function (p) { return p.id !== vs.playerId && p.solved; }).length;
+      const otherPlayersCount = Math.max(1, totalPlayers - 1);
+
+      const is1v1Loss = (totalPlayers === 2 && winner && winner.id !== vs.playerId);
+      const isMultiplayerLastLeft = (totalPlayers > 2 && finishedOtherPlayers >= otherPlayersCount);
+      const isGlobalFinished = vs.finished;
+
+      if (is1v1Loss || isMultiplayerLastLeft || isGlobalFinished) {
+        state.running = false;
+        stopTimer();
+        reveal('puzzle');
+        let reason = 'Race finished! Full puzzle solution revealed.';
+        if (is1v1Loss) {
+          reason = (winner ? winner.name : 'Opponent') + ' won the 1v1 match! Solution revealed.';
+        } else if (isMultiplayerLastLeft) {
+          reason = 'All other players finished! You were last — solution revealed.';
+        }
+        showNotice(reason);
+        showCongrats();
+      }
     }
     if (vs.started) el.countdown.classList.remove('on');
   });
