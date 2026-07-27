@@ -634,9 +634,7 @@ html, body {
 .rp-meta { min-width: 74px; text-align: right; font-variant-numeric: tabular-nums; color: #555; font-size: 12px; }
 .race-player.done .rp-meta { color: #1a9c4b; font-weight: 700; }
 
-/* During a race, checking or revealing is off the table. */
-body.racing .menu:nth-of-type(2),
-body.racing .menu:nth-of-type(3),
+/* During a race, disable New Puzzle button so players don't abort by accident */
 body.racing #newBtn { opacity: .4; pointer-events: none; }
 
 /* ---------------- countdown ---------------- */
