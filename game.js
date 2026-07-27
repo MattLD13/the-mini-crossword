@@ -805,7 +805,7 @@
   function startRacePuzzle(puzzle, difficulty) {
     race.on = true;
     race.lastSent = -1;
-    race.checks = 0;
+    race.checks = 1;
     race.reveals = 0;
     race.lastCheckSec = 0;
     race.lastRevealSec = 0;
