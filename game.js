@@ -822,13 +822,18 @@
   }
 
   function loadProfile() {
+    let p = null;
     try {
       const raw = localStorage.getItem(PROFILE_KEY);
-      if (raw) return Object.assign(defaultProfile(), JSON.parse(raw));
+      if (raw) p = JSON.parse(raw);
     } catch (e) {}
-    const c = getCookie(PROFILE_KEY);
-    if (c) return Object.assign(defaultProfile(), c);
-    return null;
+    if (!p) p = getCookie(PROFILE_KEY);
+    p = Object.assign(defaultProfile(), p || {});
+    if (!p.name) {
+      const vName = Versus.savedName();
+      if (vName) p.name = vName;
+    }
+    return p;
   }
 
   function saveProfile(p) {
@@ -910,6 +915,9 @@
 
   function initProfileUI() {
     let p = loadProfile();
+    const welcomeInput = document.getElementById('welcomeNameInput');
+    if (welcomeInput) welcomeInput.value = p.name || Versus.savedName() || '';
+
     if (!p || !p.name) {
       document.getElementById('welcomeModal').classList.add('on');
     } else {
@@ -917,8 +925,8 @@
       if (p.name) Versus.rememberName(p.name);
     }
 
-    document.getElementById('welcomeStartBtn').addEventListener('click', function (e) {
-      e.preventDefault();
+    const saveWelcomeName = function (e) {
+      if (e) e.preventDefault();
       const input = document.getElementById('welcomeNameInput');
       const name = (input.value || 'Player').trim();
       p = loadProfile() || defaultProfile();
@@ -926,7 +934,11 @@
       saveProfile(p);
       Versus.rememberName(name);
       document.getElementById('welcomeModal').classList.remove('on');
-    });
+    };
+
+    const form = document.getElementById('welcomeForm');
+    if (form) form.addEventListener('submit', saveWelcomeName);
+    document.getElementById('welcomeStartBtn').addEventListener('click', saveWelcomeName);
 
     document.getElementById('statsBtn').addEventListener('click', function () {
       renderStatsModal();
