@@ -1021,35 +1021,49 @@
     const dYesterday = new Date();
     dYesterday.setDate(dYesterday.getDate() - 1);
     const yesterday = dYesterday.toISOString().split('T')[0];
+    const diff = currentDifficulty();
 
+    p.played = (p.played || 0) + 1;
+    p.solved = (p.solved || 0) + 1;
+
+    // Daily streak logic (increments once per day)
     if (p.lastSolvedDate !== today) {
-      p.played = (p.played || 0) + 1;
-      p.solved = (p.solved || 0) + 1;
-
       if (p.lastSolvedDate === yesterday) {
         p.streak = (p.streak || 0) + 1;
       } else {
         p.streak = 1;
       }
-
       if (p.streak > (p.bestStreak || 0)) {
         p.bestStreak = p.streak;
       }
       p.lastSolvedDate = today;
-
-      const entry = {
-        date: today,
-        seconds: state.seconds,
-        difficulty: currentDifficulty(),
-        usedHelp: !!state.usedHelp,
-        label: state.label || 'The Mini'
-      };
-
-      p.history = p.history || [];
-      p.history.unshift(entry);
-      if (p.history.length > 30) p.history.pop();
-      saveProfile(p);
     }
+
+    // Per-difficulty leaderboard recording for today
+    p.history = p.history || [];
+    const existingIdx = p.history.findIndex(function (h) {
+      return h.date === today && (h.difficulty || 'medium') === diff;
+    });
+
+    const newEntry = {
+      date: today,
+      seconds: state.seconds,
+      difficulty: diff,
+      usedHelp: !!state.usedHelp,
+      label: state.label || 'The Mini'
+    };
+
+    if (existingIdx !== -1) {
+      // Keep best time for this difficulty today
+      if (state.seconds < p.history[existingIdx].seconds) {
+        p.history[existingIdx] = newEntry;
+      }
+    } else {
+      p.history.unshift(newEntry);
+    }
+
+    if (p.history.length > 50) p.history.pop();
+    saveProfile(p);
   }
 
   function renderStatsModal() {
