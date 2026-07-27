@@ -523,8 +523,13 @@
   }
 
   function reveal(scope) {
+    if (scope === 'puzzle' && !race.on && !state.solved) {
+      showNotice('Manual full puzzle reveal is disabled. Use Square or Word reveal!');
+      return;
+    }
     state.usedHelp = true;
-    state.seconds += 15;
+    const penalty = scope === 'word' ? 60 : 15;
+    state.seconds += penalty;
     paintTimer();
     targetCells(scope).forEach(function (cell) {
       const answer = state.puzzle.solution[cell.r][cell.c];
@@ -535,6 +540,7 @@
       state.marks[cell.r][cell.c].wrong = false;
       state.marks[cell.r][cell.c].correct = false;
     });
+    showNotice((scope === 'word' ? 'Word' : 'Square') + ' revealed (+' + (penalty === 60 ? '1m' : '15s') + ' penalty)');
     if (!checkSolved()) render();
   }
 
@@ -653,7 +659,7 @@
       if (revealList) {
         revealList.innerHTML =
           '<button data-action="reveal-square">Square (+15s, 1★)</button>' +
-          '<button data-action="reveal-word">Word (+15s, 2★)</button>';
+          '<button data-action="reveal-word">Word (+1m, 2★)</button>';
       }
     } else {
       if (btnCheck) btnCheck.innerHTML = 'Check<span class="caret"></span>';
@@ -667,8 +673,7 @@
       if (revealList) {
         revealList.innerHTML =
           '<button data-action="reveal-square">Square (+15s)</button>' +
-          '<button data-action="reveal-word">Word (+15s)</button>' +
-          '<button data-action="reveal-puzzle">Puzzle (+15s)</button>';
+          '<button data-action="reveal-word">Word (+1m)</button>';
       }
     }
   }
