@@ -631,16 +631,27 @@
 
     if (race.on) {
       const me = Versus.me();
-      const place = me && me.place;
+      let place = me ? me.place : null;
+      if (!place && Versus.state.players) {
+        const finishedList = Versus.state.players.filter(function (p) { return p.solved; });
+        if (me && me.solved) {
+          const myIdx = finishedList.findIndex(function (p) { return p.id === me.id; });
+          place = myIdx !== -1 ? myIdx + 1 : finishedList.length;
+        } else {
+          place = finishedList.length + 1;
+        }
+      }
+      place = place || 2;
       const won = place === 1;
-      el.modalMark.textContent = won ? '🏆' : '🏁';
-      el.modalMark.style.color = won ? '#f5c518' : '#555';
-      el.modalTitle.textContent = won ? 'You won!' : 'Finished ' + formatPlace(place || 1);
+
+      el.modalMark.textContent = won ? '🏆' : place === 2 ? '🥈' : place === 3 ? '🥉' : '🏁';
+      el.modalMark.style.color = won ? '#f5c518' : place === 2 ? '#c0c0c0' : place === 3 ? '#cd7f32' : '#888';
+      el.modalTitle.textContent = won ? 'You won! 🏆' : 'Finished ' + formatPlace(place);
       const winner = Versus.state.players.find(function (p) { return p.place === 1; });
       el.modalBody.textContent = won
         ? 'First to finish, in ' + formatTime(state.seconds) + '.'
-        : 'You solved it in ' + formatTime(state.seconds) +
-          (winner ? '. ' + winner.name + ' got there first.' : '.');
+        : 'You finished ' + formatPlace(place) + ' in ' + formatTime(state.seconds) +
+          (winner ? '. ' + winner.name + ' won 1st place.' : '.');
       el.modal.classList.add('on');
       return;
     }
@@ -903,6 +914,7 @@
       try { nextPuzzle = makePuzzle(null, diff); } catch (e) { nextPuzzle = makePuzzle(null, 'medium'); }
       Versus.rematch(nextPuzzle, diff).then(function () {
         startRacePuzzle(nextPuzzle, diff);
+        showVersusModal();
       }).catch(function (err) { showNotice(err.message || 'Rematch failed'); });
     });
   }
@@ -1625,10 +1637,30 @@
     el.vsCode.value = el.vsCode.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
   });
 
+  let lastRematchVersion = -1;
+
   Versus.onChange(function (vs) {
     renderRaceStrip();
     renderCountdown();
     if (!el.versusModal.hidden) renderLobby();
+
+    // When a rematch is triggered on server (startAt cleared), fetch new puzzle and re-open Lobby for all players!
+    if (vs.active && !vs.started && !vs.startAt && race.on && vs.version !== lastRematchVersion) {
+      lastRematchVersion = vs.version;
+      closeModal();
+      fetch('/api/puzzle?code=' + vs.code)
+        .then(function (res) { return res.json(); })
+        .then(function (data) {
+          if (data && data.puzzle) {
+            startRacePuzzle(data.puzzle, data.difficulty || currentDifficulty());
+            showVersusModal();
+          }
+        })
+        .catch(function () {
+          showVersusModal();
+        });
+    }
+
     if (vs.started && race.on && state && !state.running && !state.solved) {
       hideVersusModal();
       beginRace();

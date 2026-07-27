@@ -46,6 +46,7 @@
     state.difficulty = next.difficulty || state.difficulty;
     state.finished = !!next.finished;
     state.startAt = next.startAt;
+    if (!next.startAt) state.started = false;
     if (typeof next.serverNow === 'number') state.clockSkew = next.serverNow - Date.now();
     if (next.startAt && !state.started && localNow() >= next.startAt) state.started = true;
     emit();
