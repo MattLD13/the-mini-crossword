@@ -919,6 +919,29 @@ body.racing #newBtn { opacity: .4; pointer-events: none; }
 }
 .history-time { font-weight: 700; color: var(--revealed); font-variant-numeric: tabular-nums; }
 
+/* ---------------- toast notice ---------------- */
+.toast-notice {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-10px);
+  background: var(--solid-bg);
+  color: var(--solid-text);
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+  z-index: 100;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+.toast-notice.on {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
 /* ---------------- responsive ---------------- */
 @media (min-width: 1200px) {
   :root { --cell: min(104px, calc((86vh - 200px) / 5)); }

@@ -601,6 +601,22 @@
 
   function closeModal() { el.modal.classList.remove('on'); }
 
+  function showNotice(msg) {
+    let notice = document.getElementById('toastNotice');
+    if (!notice) {
+      notice = document.createElement('div');
+      notice.id = 'toastNotice';
+      notice.className = 'toast-notice';
+      document.body.appendChild(notice);
+    }
+    notice.textContent = msg;
+    notice.classList.add('on');
+    clearTimeout(notice._timer);
+    notice._timer = setTimeout(function () {
+      notice.classList.remove('on');
+    }, 2200);
+  }
+
   /* ---------------- timer ---------------- */
 
   function formatTime(total) {
@@ -617,6 +633,18 @@
       : '<path d="M1 1 L11 7 L1 13 Z" fill="currentColor"></path>';
   }
 
+  function updateVersusToolBadges() {
+    const btnCheck = document.getElementById('checkMenuBtn');
+    const btnReveal = document.getElementById('revealMenuBtn');
+    if (race.on) {
+      if (btnCheck) btnCheck.innerHTML = 'Check (' + (race.checks || 0) + ')<span class="caret"></span>';
+      if (btnReveal) btnReveal.innerHTML = 'Reveal (' + (race.reveals || 0) + ')<span class="caret"></span>';
+    } else {
+      if (btnCheck) btnCheck.innerHTML = 'Check<span class="caret"></span>';
+      if (btnReveal) btnReveal.innerHTML = 'Reveal<span class="caret"></span>';
+    }
+  }
+
   function startTimer() {
     stopTimer();
     if (state.solved) return;
@@ -625,6 +653,24 @@
     tick = setInterval(function () {
       state.seconds++;
       paintTimer();
+      if (race.on) {
+        const earnedChecks = Math.floor(state.seconds / 15);
+        if (earnedChecks > race.lastCheckSec) {
+          const diff = earnedChecks - race.lastCheckSec;
+          race.checks = (race.checks || 0) + diff;
+          race.lastCheckSec = earnedChecks;
+          showNotice('+1 Check Credit earned! (' + race.checks + ' available)');
+          updateVersusToolBadges();
+        }
+        const earnedReveals = Math.floor(state.seconds / 60);
+        if (earnedReveals > race.lastRevealSec) {
+          const diff = earnedReveals - race.lastRevealSec;
+          race.reveals = (race.reveals || 0) + diff;
+          race.lastRevealSec = earnedReveals;
+          showNotice('+1 Reveal Credit earned! (' + race.reveals + ' available)');
+          updateVersusToolBadges();
+        }
+      }
       if (state.seconds % 5 === 0) save();
     }, 1000);
     paintTimer();
@@ -666,8 +712,30 @@
     const action = e.target.closest('[data-action]');
     if (!action) return;
     const [verb, scope] = action.dataset.action.split('-');
-    // Checking and revealing would trivially win a race.
-    if (race.on && verb !== 'clear') {
+    if (race.on) {
+      if (verb === 'check') {
+        if ((race.checks || 0) <= 0) {
+          showNotice('No Check credits available yet! (+1 earned every 15s)');
+          document.querySelectorAll('.menu').forEach(function (m) { m.classList.remove('open'); });
+          return;
+        }
+        race.checks--;
+        updateVersusToolBadges();
+        check(scope);
+        reportProgress(true);
+      } else if (verb === 'reveal') {
+        if ((race.reveals || 0) <= 0) {
+          showNotice('No Reveal credits available yet! (+1 earned every 60s)');
+          document.querySelectorAll('.menu').forEach(function (m) { m.classList.remove('open'); });
+          return;
+        }
+        race.reveals--;
+        updateVersusToolBadges();
+        reveal(scope);
+        reportProgress(true);
+      } else if (verb === 'clear') {
+        clear(scope);
+      }
       document.querySelectorAll('.menu').forEach(function (m) { m.classList.remove('open'); });
       return;
     }
@@ -701,7 +769,7 @@
 
   /* ---------------- versus ---------------- */
 
-  const race = { on: false, sendTimer: null, lastSent: -1 };
+  const race = { on: false, sendTimer: null, lastSent: -1, checks: 0, reveals: 0, lastCheckSec: 0, lastRevealSec: 0 };
 
   function whiteCellCount() {
     let n = 0;
@@ -737,12 +805,15 @@
   function startRacePuzzle(puzzle, difficulty) {
     race.on = true;
     race.lastSent = -1;
+    race.checks = 0;
+    race.reveals = 0;
+    race.lastCheckSec = 0;
+    race.lastRevealSec = 0;
+    updateVersusToolBadges();
     document.body.classList.add('racing');
     const label = 'Versus · ' + (DIFF_LABEL[difficulty] || 'Medium');
     const next = blankState(puzzle, label, 'versus');
     mount(next, label);
-    // mount() starts the clock; hold everything until the countdown ends so
-    // nobody can enter letters early.
     state.running = false;
     stopTimer();
     el.pauseCover.classList.add('on');
@@ -760,6 +831,9 @@
 
   function endRace() {
     race.on = false;
+    race.checks = 0;
+    race.reveals = 0;
+    updateVersusToolBadges();
     clearTimeout(race.sendTimer);
     document.body.classList.remove('racing');
     el.raceStrip.classList.remove('on');
