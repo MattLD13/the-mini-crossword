@@ -277,8 +277,77 @@ const api = {
       bump(room);
     }
     sendJSON(res, 200, { ok: true });
+  },
+
+  'POST /api/submit-score': async function (req, res) {
+    const body = await readBody(req);
+    if (!body.name || !body.difficulty) {
+      return sendJSON(res, 400, { error: 'Invalid score payload' });
+    }
+    const entry = {
+      name: cleanName(body.name, 'Player'),
+      streak: Math.max(0, Number(body.streak) || 0),
+      bestStreak: Math.max(0, Number(body.bestStreak) || 0),
+      seconds: Math.max(0, Number(body.seconds) || 0),
+      difficulty: String(body.difficulty || 'medium'),
+      date: String(body.date || new Date().toISOString().split('T')[0]),
+      timestamp: Date.now()
+    };
+    globalLeaderboards.push(entry);
+    if (globalLeaderboards.length > 1000) globalLeaderboards.shift();
+    sendJSON(res, 200, { ok: true });
+  },
+
+  'GET /api/leaderboard': function (req, res, query) {
+    const period = query.get('period') || 'daily';
+    const difficulty = query.get('difficulty') || 'medium';
+    const list = getSyncedLeaderboard(period, difficulty);
+    sendJSON(res, 200, { leaderboard: list });
   }
 };
+
+const globalLeaderboards = [];
+
+function getSyncedLeaderboard(period, difficulty) {
+  const today = new Date().toISOString().split('T')[0];
+  const isDaily = period === 'daily';
+
+  let filtered = globalLeaderboards.filter(function (item) {
+    const matchDiff = !item.difficulty || item.difficulty === difficulty;
+    if (!matchDiff) return false;
+    if (isDaily) return item.date === today;
+    return true;
+  });
+
+  const playerMap = new Map();
+  filtered.forEach(function (item) {
+    const existing = playerMap.get(item.name);
+    if (!existing) {
+      playerMap.set(item.name, item);
+    } else {
+      const streakCurrent = isDaily ? item.streak : item.bestStreak;
+      const streakExisting = isDaily ? existing.streak : existing.bestStreak;
+      const scoreCurrent = (item.seconds < 9999 ? (10000 - item.seconds) : 0) + (streakCurrent * 250);
+      const scoreExisting = (existing.seconds < 9999 ? (10000 - existing.seconds) : 0) + (streakExisting * 250);
+      if (scoreCurrent > scoreExisting) {
+        playerMap.set(item.name, item);
+      }
+    }
+  });
+
+  const list = Array.from(playerMap.values());
+  list.sort(function (a, b) {
+    const streakA = isDaily ? a.streak : a.bestStreak;
+    const streakB = isDaily ? b.streak : b.bestStreak;
+    const scoreA = (a.seconds < 9999 ? (10000 - a.seconds) : 0) + (streakA * 250);
+    const scoreB = (b.seconds < 9999 ? (10000 - b.seconds) : 0) + (streakB * 250);
+    if (scoreA !== scoreB) return scoreB - scoreA;
+    if (a.seconds !== b.seconds) return a.seconds - b.seconds;
+    return streakB - streakA;
+  });
+
+  return list;
+}
 
 /* ------------------------------------------------------------- static */
 

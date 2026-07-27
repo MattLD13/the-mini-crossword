@@ -1069,6 +1069,22 @@
 
     if (p.history.length > 50) p.history.pop();
     saveProfile(p);
+
+    // Sync score to global cross-device server
+    try {
+      fetch('/api/submit-score', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: p.name || 'Player',
+          streak: p.streak || 0,
+          bestStreak: p.bestStreak || 0,
+          seconds: state.seconds,
+          difficulty: diff,
+          date: today
+        })
+      }).catch(function () {});
+    } catch (e) {}
   }
 
   function renderStatsModal() {
@@ -1102,61 +1118,53 @@
   let activeLbPeriod = 'daily';
   let activeLbDiff = 'medium';
 
-  function renderLeaderboard(period, diff) {
-    if (period) activeLbPeriod = period;
-    if (diff) activeLbDiff = diff;
-
-    document.querySelectorAll('.lb-tab').forEach(function (tab) {
-      tab.classList.toggle('active', tab.dataset.lbperiod === activeLbPeriod);
-    });
-    document.querySelectorAll('.lb-diff-tab').forEach(function (tab) {
-      tab.classList.toggle('active', tab.dataset.lbdiff === activeLbDiff);
-    });
-
+  function renderLeaderboardData(serverEntries) {
     const p = loadProfile() || defaultProfile();
     const myName = p.name || 'You';
-    const today = new Date().toISOString().split('T')[0];
+    const list = document.getElementById('lbList');
+    if (!list) return;
+    list.innerHTML = '';
 
-    const targetDiff = activeLbDiff;
-    const isDailyMode = activeLbPeriod === 'daily';
+    const isDaily = activeLbPeriod === 'daily';
+    const entries = [];
+    const seenNames = new Set();
 
-    let myMatchingHistory = (p.history || []).filter(function (h) {
-      const matchDiff = !h.difficulty || h.difficulty === targetDiff;
-      if (!matchDiff) return false;
-      if (isDailyMode) return h.date === today;
-      return true;
-    });
-
-    let bestTime = null;
-    if (myMatchingHistory.length > 0) {
-      bestTime = myMatchingHistory.reduce(function (min, h) {
-        return (min === null || (h.seconds && h.seconds < min)) ? h.seconds : min;
-      }, null);
+    if (Array.isArray(serverEntries)) {
+      serverEntries.forEach(function (item) {
+        seenNames.add(item.name);
+        const streakVal = isDaily ? (item.streak || 0) : (item.bestStreak || 0);
+        entries.push({
+          name: item.name,
+          streak: streakVal,
+          bestTime: item.seconds ? formatTime(item.seconds) : '--:--',
+          seconds: item.seconds || 9999,
+          isMe: item.name === myName
+        });
+      });
     }
 
-    const myStreakVal = isDailyMode ? (p.streak || 0) : (p.bestStreak || 0);
-
-    const meEntry = {
-      name: myName,
-      streak: myStreakVal,
-      bestTime: bestTime ? formatTime(bestTime) : '--:--',
-      seconds: bestTime || 9999,
-      isMe: true
-    };
-
-    const entries = [meEntry];
-
-    if (window.vsState && window.vsState.players) {
-      window.vsState.players.forEach(function (pl) {
-        if (pl.name !== myName) {
-          entries.push({
-            name: pl.name,
-            streak: isDailyMode ? (Math.floor(Math.random() * 5) + 1) : (Math.floor(Math.random() * 12) + 2),
-            bestTime: pl.finished ? formatTime(pl.time || 0) : 'Active',
-            seconds: pl.finished ? (pl.time || 999) : 9999,
-            isMe: false
-          });
-        }
+    // Always include current local player if not in server list yet
+    if (!seenNames.has(myName)) {
+      const today = new Date().toISOString().split('T')[0];
+      const matching = (p.history || []).filter(function (h) {
+        const matchDiff = !h.difficulty || h.difficulty === activeLbDiff;
+        if (!matchDiff) return false;
+        if (isDaily) return h.date === today;
+        return true;
+      });
+      let bestSec = null;
+      if (matching.length > 0) {
+        bestSec = matching.reduce(function (min, h) {
+          return (min === null || (h.seconds && h.seconds < min)) ? h.seconds : min;
+        }, null);
+      }
+      const myStreakVal = isDaily ? (p.streak || 0) : (p.bestStreak || 0);
+      entries.push({
+        name: myName,
+        streak: myStreakVal,
+        bestTime: bestSec ? formatTime(bestSec) : '--:--',
+        seconds: bestSec || 9999,
+        isMe: true
       });
     }
 
@@ -1168,9 +1176,10 @@
       return b.streak - a.streak;
     });
 
-    const list = document.getElementById('lbList');
-    if (!list) return;
-    list.innerHTML = '';
+    if (entries.length === 0) {
+      list.innerHTML = '<p class="empty-history">No records yet for this category.</p>';
+      return;
+    }
 
     entries.forEach(function (item, idx) {
       const div = document.createElement('div');
@@ -1183,6 +1192,32 @@
         '<span class="lb-time">' + item.bestTime + '</span>';
       list.appendChild(div);
     });
+  }
+
+  function renderLeaderboard(period, diff) {
+    if (period) activeLbPeriod = period;
+    if (diff) activeLbDiff = diff;
+
+    document.querySelectorAll('.lb-tab').forEach(function (tab) {
+      tab.classList.toggle('active', tab.dataset.lbperiod === activeLbPeriod);
+    });
+    document.querySelectorAll('.lb-diff-tab').forEach(function (tab) {
+      tab.classList.toggle('active', tab.dataset.lbdiff === activeLbDiff);
+    });
+
+    // Fetch live cross-device synced leaderboard from server
+    fetch('/api/leaderboard?period=' + activeLbPeriod + '&difficulty=' + activeLbDiff)
+      .then(function (res) { return res.json(); })
+      .then(function (data) {
+        if (data && Array.isArray(data.leaderboard)) {
+          renderLeaderboardData(data.leaderboard);
+        } else {
+          renderLeaderboardData([]);
+        }
+      })
+      .catch(function () {
+        renderLeaderboardData([]);
+      });
   }
 
   function initProfileUI() {
