@@ -636,12 +636,24 @@
   function updateVersusToolBadges() {
     const btnCheck = document.getElementById('checkMenuBtn');
     const btnReveal = document.getElementById('revealMenuBtn');
+    const revealList = document.getElementById('revealMenuList');
     if (race.on) {
       if (btnCheck) btnCheck.innerHTML = 'Check (' + (race.checks || 0) + ')<span class="caret"></span>';
       if (btnReveal) btnReveal.innerHTML = 'Reveal (' + (race.reveals || 0) + ')<span class="caret"></span>';
+      if (revealList) {
+        revealList.innerHTML =
+          '<button data-action="reveal-square">Square (1★)</button>' +
+          '<button data-action="reveal-word">Word (2★)</button>';
+      }
     } else {
       if (btnCheck) btnCheck.innerHTML = 'Check<span class="caret"></span>';
       if (btnReveal) btnReveal.innerHTML = 'Reveal<span class="caret"></span>';
+      if (revealList) {
+        revealList.innerHTML =
+          '<button data-action="reveal-square">Square</button>' +
+          '<button data-action="reveal-word">Word</button>' +
+          '<button data-action="reveal-puzzle">Puzzle</button>';
+      }
     }
   }
 
@@ -755,7 +767,12 @@
         check(scope);
         reportProgress(true);
       } else if (verb === 'reveal') {
-        const cost = scope === 'puzzle' ? 3 : scope === 'word' ? 2 : 1;
+        if (scope === 'puzzle') {
+          showNotice('Reveal Puzzle is only available after the race ends!');
+          document.querySelectorAll('.menu').forEach(function (m) { m.classList.remove('open'); });
+          return;
+        }
+        const cost = scope === 'word' ? 2 : 1;
         if ((race.reveals || 0) < cost) {
           showNotice('Reveal ' + scope + ' requires ' + cost + ' Reveal credit' + (cost > 1 ? 's' : '') + '! (+1 earned every 60s)');
           document.querySelectorAll('.menu').forEach(function (m) { m.classList.remove('open'); });
@@ -1187,11 +1204,22 @@
     }
   }
 
-  function toggleTheme() {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    const nextDark = !isDark;
-    applyTheme(nextDark);
-    try { localStorage.setItem(THEME_KEY, nextDark ? 'dark' : 'light'); } catch (e) {}
+  function initTheme() {
+    let dark = false;
+    try {
+      const saved = localStorage.getItem(THEME_KEY);
+      if (saved !== null) dark = saved === 'dark';
+      else dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch (e) {}
+
+    applyTheme(dark);
+
+    const themeBtn = document.getElementById('themeToggle');
+    if (themeBtn) themeBtn.addEventListener('click', function () {
+      dark = !dark;
+      applyTheme(dark);
+      try { localStorage.setItem(THEME_KEY, dark ? 'dark' : 'light'); } catch (e) {}
+    });
   }
 
   function dismissLoader() {
@@ -1202,9 +1230,6 @@
       if (loader.parentNode) loader.parentNode.removeChild(loader);
     }, 450);
   }
-
-  const themeBtn = document.getElementById('themeToggle');
-  if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
 
   /* ---------------- boot ---------------- */
 
@@ -1260,6 +1285,7 @@
     if (cached && MiniGenerator.useBank(cached.bank)) source = 'cache';
 
     initProfileUI();
+    initTheme();
     startPuzzle();
     noteSource(source === 'cache' ? 'cache' : 'fetching');
     setTimeout(dismissLoader, 300);
@@ -1295,6 +1321,7 @@
 
   function renderLobby() {
     const vs = Versus.state;
+    window.vsState = vs;
     if (!vs.active) return;
     el.vsCodeOut.textContent = vs.code;
     el.vsRoster.innerHTML = '';
@@ -1390,6 +1417,10 @@
     if (vs.started && race.on && state && !state.running && !state.solved) {
       hideVersusModal();
       beginRace();
+    }
+    if (vs.finished && race.on && state && !state.solved) {
+      reveal('puzzle');
+      showNotice('Race finished! Full puzzle solution revealed.');
     }
     if (vs.started) el.countdown.classList.remove('on');
   });
