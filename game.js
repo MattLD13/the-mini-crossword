@@ -700,6 +700,37 @@
     if (document.hidden && state && state.running) pause();
   });
 
+  function giveHint(scope) {
+    const entry = currentEntry();
+    if (!entry) {
+      showNotice('Select a clue on the board first!');
+      return;
+    }
+    const answer = entry.answer;
+    const num = entry.num + (entry.dir === 'across' ? 'A' : 'D');
+
+    if (scope === 'clue') {
+      const vowels = (answer.match(/[AEIOU]/gi) || []).length;
+      const firstLetter = answer[0];
+      showNotice('💡 ' + num + ' Hint: ' + answer.length + ' letters, starts with "' + firstLetter + '" (' + vowels + ' vowel' + (vowels === 1 ? '' : 's') + ')');
+    } else if (scope === 'vowels') {
+      const vowels = (answer.match(/[AEIOU]/gi) || []).length;
+      showNotice('🔍 ' + num + ' contains ' + vowels + ' vowel' + (vowels === 1 ? '' : 's') + '.');
+    } else if (scope === 'letter') {
+      let emptyCell = entry.cells.find(function (c) {
+        return !state.entries[c.r][c.c] || state.marks[c.r][c.c].wrong;
+      });
+      if (!emptyCell) emptyCell = entry.cells[0];
+      const ansChar = state.puzzle.solution[emptyCell.r][emptyCell.c];
+      state.entries[emptyCell.r][emptyCell.c] = ansChar;
+      state.marks[emptyCell.r][emptyCell.c].revealed = true;
+      state.usedHelp = true;
+      render();
+      showNotice('🔤 Filled letter "' + ansChar + '" in ' + num + '!');
+      if (checkSolved()) return;
+    }
+  }
+
   /* ---------------- menus & buttons ---------------- */
 
   document.addEventListener('click', function (e) {
@@ -724,15 +755,18 @@
         check(scope);
         reportProgress(true);
       } else if (verb === 'reveal') {
-        if ((race.reveals || 0) <= 0) {
-          showNotice('No Reveal credits available yet! (+1 earned every 60s)');
+        const cost = scope === 'puzzle' ? 3 : scope === 'word' ? 2 : 1;
+        if ((race.reveals || 0) < cost) {
+          showNotice('Reveal ' + scope + ' requires ' + cost + ' Reveal credit' + (cost > 1 ? 's' : '') + '! (+1 earned every 60s)');
           document.querySelectorAll('.menu').forEach(function (m) { m.classList.remove('open'); });
           return;
         }
-        race.reveals--;
+        race.reveals -= cost;
         updateVersusToolBadges();
         reveal(scope);
         reportProgress(true);
+      } else if (verb === 'hint') {
+        giveHint(scope);
       } else if (verb === 'clear') {
         clear(scope);
       }
@@ -741,6 +775,7 @@
     }
     if (verb === 'check') check(scope);
     if (verb === 'reveal') reveal(scope);
+    if (verb === 'hint') giveHint(scope);
     if (verb === 'clear') clear(scope);
     document.querySelectorAll('.menu').forEach(function (m) { m.classList.remove('open'); });
   });

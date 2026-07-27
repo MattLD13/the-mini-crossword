@@ -993,8 +993,8 @@ body.racing #newBtn { opacity: .4; pointer-events: none; }
 
   .tools {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 6px;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 5px;
     width: 100%;
     overflow: visible;
   }
