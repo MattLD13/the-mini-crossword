@@ -522,11 +522,58 @@
     render();
   }
 
+  function recordForfeit() {
+    let p = loadProfile() || defaultProfile();
+    const today = new Date().toISOString().split('T')[0];
+    const diff = currentDifficulty();
+
+    p.streak = 0;
+
+    p.history = p.history || [];
+    const existingIdx = p.history.findIndex(function (h) {
+      return h.date === today && (h.difficulty || 'medium') === diff;
+    });
+
+    const forfeitEntry = {
+      date: today,
+      seconds: null,
+      difficulty: diff,
+      usedHelp: true,
+      forfeited: true,
+      label: state.label || 'The Mini'
+    };
+
+    if (existingIdx !== -1) {
+      if (!p.history[existingIdx].seconds) p.history[existingIdx] = forfeitEntry;
+    } else {
+      p.history.unshift(forfeitEntry);
+    }
+
+    saveProfile(p);
+  }
+
   function reveal(scope) {
-    if (scope === 'puzzle' && !race.on && !state.solved) {
-      showNotice('Manual full puzzle reveal is disabled. Use Square or Word reveal!');
+    if (scope === 'puzzle') {
+      if (!race.on) {
+        state.solved = true;
+        state.running = false;
+        stopTimer();
+        recordForfeit();
+      }
+      targetCells('puzzle').forEach(function (cell) {
+        const answer = state.puzzle.solution[cell.r][cell.c];
+        state.entries[cell.r][cell.c] = answer;
+        state.marks[cell.r][cell.c].revealed = true;
+        state.marks[cell.r][cell.c].wrong = false;
+        state.marks[cell.r][cell.c].correct = false;
+      });
+      render();
+      if (!race.on) {
+        showNotice('Puzzle revealed. Daily streak reset to 0 (no time recorded).');
+      }
       return;
     }
+
     state.usedHelp = true;
     const penalty = scope === 'word' ? 60 : 15;
     state.seconds += penalty;
@@ -673,7 +720,8 @@
       if (revealList) {
         revealList.innerHTML =
           '<button data-action="reveal-square">Square (+15s)</button>' +
-          '<button data-action="reveal-word">Word (+1m)</button>';
+          '<button data-action="reveal-word">Word (+1m)</button>' +
+          '<button data-action="reveal-puzzle">Puzzle (Reset Streak)</button>';
       }
     }
   }
