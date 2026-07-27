@@ -535,6 +535,7 @@
     state.solved = true;
     state.running = false;
     stopTimer();
+    recordSolve();
     if (race.on) {
       clearTimeout(race.sendTimer);
       Versus.sendProgress(1, true, state.seconds);
@@ -788,6 +789,164 @@
     el.countdownNum.textContent = String(Math.max(1, Math.ceil(ms / 1000)));
   }
 
+  /* ---------------- cookie & profile management ---------------- */
+
+  const PROFILE_KEY = 'mini-player-profile';
+
+  function setCookie(name, value, days) {
+    try {
+      const date = new Date();
+      date.setTime(date.getTime() + ((days || 365) * 24 * 60 * 60 * 1000));
+      document.cookie = name + "=" + encodeURIComponent(JSON.stringify(value)) + "; expires=" + date.toUTCString() + "; path=/; SameSite=Lax";
+    } catch (e) {}
+  }
+
+  function getCookie(name) {
+    try {
+      const matches = document.cookie.match(new RegExp("(?:^|; )" + name.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, '\\$1') + "=([^;]*)"));
+      return matches ? JSON.parse(decodeURIComponent(matches[1])) : null;
+    } catch (e) { return null; }
+  }
+
+  function defaultProfile() {
+    return {
+      name: '',
+      streak: 0,
+      bestStreak: 0,
+      played: 0,
+      solved: 0,
+      history: [],
+      lastSolvedDate: null
+    };
+  }
+
+  function loadProfile() {
+    try {
+      const raw = localStorage.getItem(PROFILE_KEY);
+      if (raw) return Object.assign(defaultProfile(), JSON.parse(raw));
+    } catch (e) {}
+    const c = getCookie(PROFILE_KEY);
+    if (c) return Object.assign(defaultProfile(), c);
+    return null;
+  }
+
+  function saveProfile(p) {
+    if (!p) return;
+    try { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); } catch (e) {}
+    setCookie(PROFILE_KEY, p, 365);
+    updateHeaderStreak(p);
+  }
+
+  function updateHeaderStreak(p) {
+    const elStreak = document.getElementById('streakHeaderCount');
+    if (elStreak) elStreak.textContent = String(p && p.streak || 0);
+  }
+
+  function recordSolve() {
+    let p = loadProfile() || defaultProfile();
+    const today = new Date().toISOString().split('T')[0];
+    const dYesterday = new Date();
+    dYesterday.setDate(dYesterday.getDate() - 1);
+    const yesterday = dYesterday.toISOString().split('T')[0];
+
+    if (p.lastSolvedDate !== today) {
+      p.played = (p.played || 0) + 1;
+      p.solved = (p.solved || 0) + 1;
+
+      if (p.lastSolvedDate === yesterday) {
+        p.streak = (p.streak || 0) + 1;
+      } else {
+        p.streak = 1;
+      }
+
+      if (p.streak > (p.bestStreak || 0)) {
+        p.bestStreak = p.streak;
+      }
+      p.lastSolvedDate = today;
+
+      const entry = {
+        date: today,
+        seconds: state.seconds,
+        difficulty: currentDifficulty(),
+        usedHelp: !!state.usedHelp,
+        label: state.label || 'The Mini'
+      };
+
+      p.history = p.history || [];
+      p.history.unshift(entry);
+      if (p.history.length > 30) p.history.pop();
+      saveProfile(p);
+    }
+  }
+
+  function renderStatsModal() {
+    const p = loadProfile() || defaultProfile();
+    document.getElementById('statStreak').textContent = p.streak || 0;
+    document.getElementById('statBestStreak').textContent = p.bestStreak || 0;
+    document.getElementById('statPlayed').textContent = p.solved || 0;
+    document.getElementById('profileNameInput').value = p.name || '';
+
+    const list = document.getElementById('historyList');
+    list.innerHTML = '';
+
+    if (!p.history || p.history.length === 0) {
+      list.innerHTML = '<p class="empty-history">No solved puzzles yet. Complete your first mini!</p>';
+      return;
+    }
+
+    p.history.forEach(function (h) {
+      const div = document.createElement('div');
+      div.className = 'history-item';
+      div.innerHTML =
+        '<span class="history-date">' + h.date + '</span>' +
+        '<div class="history-meta">' +
+          '<span class="history-badge">' + (h.difficulty || 'medium') + (h.usedHelp ? ' *' : '') + '</span>' +
+          '<span class="history-time">' + formatTime(h.seconds || 0) + '</span>' +
+        '</div>';
+      list.appendChild(div);
+    });
+  }
+
+  function initProfileUI() {
+    let p = loadProfile();
+    if (!p || !p.name) {
+      document.getElementById('welcomeModal').classList.add('on');
+    } else {
+      updateHeaderStreak(p);
+      if (p.name) Versus.rememberName(p.name);
+    }
+
+    document.getElementById('welcomeStartBtn').addEventListener('click', function (e) {
+      e.preventDefault();
+      const input = document.getElementById('welcomeNameInput');
+      const name = (input.value || 'Player').trim();
+      p = loadProfile() || defaultProfile();
+      p.name = name;
+      saveProfile(p);
+      Versus.rememberName(name);
+      document.getElementById('welcomeModal').classList.remove('on');
+    });
+
+    document.getElementById('statsBtn').addEventListener('click', function () {
+      renderStatsModal();
+      document.getElementById('statsModal').classList.add('on');
+    });
+
+    const closeStats = function () { document.getElementById('statsModal').classList.remove('on'); };
+    document.getElementById('statsCloseBtn').addEventListener('click', closeStats);
+    document.getElementById('statsCloseBottomBtn').addEventListener('click', closeStats);
+
+    document.getElementById('saveNameBtn').addEventListener('click', function () {
+      const input = document.getElementById('profileNameInput');
+      const name = (input.value || 'Player').trim();
+      p = loadProfile() || defaultProfile();
+      p.name = name;
+      saveProfile(p);
+      Versus.rememberName(name);
+      closeStats();
+    });
+  }
+
   /* ---------------- theme management ---------------- */
 
   const THEME_KEY = 'mini-theme';
@@ -872,6 +1031,7 @@
     const cached = WordSource.cached();
     if (cached && MiniGenerator.useBank(cached.bank)) source = 'cache';
 
+    initProfileUI();
     startPuzzle();
     noteSource(source === 'cache' ? 'cache' : 'fetching');
     setTimeout(dismissLoader, 300);

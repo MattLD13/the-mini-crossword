@@ -702,21 +702,139 @@ body.racing #newBtn { opacity: .4; pointer-events: none; }
 #versusLobby .btn-primary:disabled { background: #999; cursor: default; }
 #versusLobby .btn-ghost { width: 100%; }
 
+/* ---------------- streak badge & stats button ---------------- */
+.streak-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  font-size: 13px;
+  padding: 0 10px;
+  border-radius: 16px;
+  background: var(--button-bg);
+  border: 1px solid var(--button-border);
+  color: var(--ink);
+  cursor: pointer;
+  height: 34px;
+}
+.fire-icon { font-size: 14px; }
+
+/* ---------------- welcome & stats modals ---------------- */
+.welcome-card { max-width: 380px; text-align: center; }
+.welcome-icon { font-size: 48px; margin-bottom: 8px; }
+.welcome-card h2 { margin: 0 0 8px; font-size: 24px; font-weight: 800; color: var(--ink); }
+.welcome-card p { margin: 0 0 20px; font-size: 14px; color: var(--subtle); line-height: 1.4; }
+.full-width { width: 100%; }
+
+.stats-card { max-width: 440px; text-align: left; position: relative; }
+.stats-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.stats-header h2 { margin: 0; font-size: 22px; font-weight: 800; color: var(--ink); }
+.modal-close-icon {
+  background: none;
+  border: none;
+  font-size: 24px;
+  color: var(--subtle);
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+}
+.modal-close-icon:hover { color: var(--ink); }
+
+.profile-name-edit { display: flex; gap: 8px; margin-bottom: 20px; }
+.profile-name-edit input {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid var(--button-border);
+  border-radius: 6px;
+  background: var(--cell-bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 600;
+}
+.btn-ghost.sm { padding: 8px 14px; font-size: 13px; border-radius: 6px; }
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 22px;
+}
+.stat-box {
+  background: var(--cross);
+  border-radius: 8px;
+  padding: 12px 8px;
+  text-align: center;
+  border: 1px solid var(--line);
+}
+.stat-num { display: block; font-size: 24px; font-weight: 800; color: var(--ink); line-height: 1.1; }
+.stat-label { display: block; font-size: 11px; font-weight: 600; color: var(--subtle); margin-top: 4px; }
+
+.stats-card h3 {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  margin: 0 0 10px;
+  color: var(--subtle);
+}
+
+.history-list {
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 20px;
+  background: var(--cell-bg);
+}
+.empty-history { font-size: 13px; color: var(--subtle); text-align: center; margin: 20px 0; }
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.history-item:last-child { border-bottom: none; }
+.history-date { font-weight: 600; color: var(--ink); }
+.history-meta { display: flex; align-items: center; gap: 8px; }
+.history-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 10px;
+  background: var(--cross);
+  color: var(--ink);
+  text-transform: capitalize;
+}
+.history-time { font-weight: 700; color: var(--revealed); font-variant-numeric: tabular-nums; }
+
 /* ---------------- responsive ---------------- */
+@media (min-width: 1200px) {
+  :root { --cell: min(84px, calc((100vh - 220px) / 5)); }
+  .page { max-width: 1140px; padding-top: 36px; }
+  .clue-panel { max-width: 520px; }
+}
+
 @media (max-width: 900px) {
-  :root { --cell: min(17vw, 72px); }
+  :root { --cell: min(17.5vw, 72px); }
   .page { padding: 16px 12px 28px; }
   .board { flex-direction: column; align-items: center; gap: 20px; }
   .clue-bar { display: flex; }
   .clue-panel { display: none; }
-  .keyboard { display: block; }
+  .keyboard { display: block; width: 100%; max-width: 520px; }
   .brand-title { font-size: 17px; }
   .topbar { padding: 8px 12px; gap: 8px; }
   .tool-btn { padding: 6px 11px; font-size: 12px; }
 }
 
-@media (max-width: 430px) {
-  .tools { width: 100%; justify-content: space-between; gap: 4px; }
+@media (max-width: 480px) {
+  :root { --cell: min(18vw, 64px); }
+  .tools { width: 100%; justify-content: space-between; gap: 4px; overflow-x: auto; padding-bottom: 2px; }
   .tool-btn { padding: 6px 9px; font-size: 11.5px; }
   .timer { padding: 4px; font-size: 14px; }
+  .streak-badge { padding: 0 8px; font-size: 12px; }
+  .kb-key { height: 42px; font-size: 15px; }
 }
