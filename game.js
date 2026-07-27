@@ -73,7 +73,7 @@
 
   function dailySeed() {
     const d = new Date();
-    const str = d.getFullYear() + '-' + (d.getMonth() + 1) + '-' + d.getDate();
+    const str = d.getUTCFullYear() + '-' + (d.getUTCMonth() + 1) + '-' + d.getUTCDate();
     let hash = 2166136261;
     for (let i = 0; i < str.length; i++) {
       hash ^= str.charCodeAt(i);
@@ -115,7 +115,10 @@
     return { r: 0, c: 0 };
   }
 
-  function makePuzzle(seed, difficulty) {
+  function makePuzzle(seed, difficulty, forceBuiltin) {
+    if (forceBuiltin && MiniGenerator.builtin) {
+      MiniGenerator.useBank(MiniGenerator.builtin);
+    }
     const puzzle = MiniGenerator.generate(seed, { difficulty: difficulty || currentDifficulty() });
     if (!puzzle) throw new Error('Could not generate a puzzle');
     return puzzle;
@@ -1122,7 +1125,7 @@
     const saved = load();
     if (saved) { mount(saved, saved.label); return; }
     const difficulty = currentDifficulty();
-    const puzzle = makePuzzle(dailySeed(), difficulty);
+    const puzzle = makePuzzle(dailySeed(), difficulty, true);
     const label = todayLabel() + ' · ' + DIFF_LABEL[difficulty];
     mount(blankState(puzzle, label, 'daily'), label);
     save();
