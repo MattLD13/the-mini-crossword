@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>The Mini Crossword</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script>
+  (function() {
+    try {
+      var saved = localStorage.getItem('mini-theme');
+      var dark = saved ? saved === 'dark' : window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (dark) document.documentElement.setAttribute('data-theme', 'dark');
+    } catch(e) {}
+  })();
+</script>
+</head>
+<body>
+
+<div id="appLoader" class="app-loader">
+  <div class="loader-content">
+    <div class="loader-grid">
+      <div class="loader-cell black"></div>
+      <div class="loader-cell letter-m">M</div>
+      <div class="loader-cell letter-i">I</div>
+      <div class="loader-cell letter-n">N</div>
+      <div class="loader-cell letter-i2">I</div>
+    </div>
+    <h1 class="loader-title">The Mini</h1>
+    <div class="loader-spinner"></div>
+    <div class="loader-status" id="loaderStatus">Loading puzzle...</div>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-title">The Mini Crossword</div>
+    <div class="brand-date" id="puzzleDate"></div>
+    <div class="brand-note" id="bankNote"></div>
+  </div>
+
+  <div class="tools">
+    <button class="icon-btn" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
+      <svg class="sun-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+      <svg class="moon-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+    </button>
+
+    <button class="timer" id="timerBtn" title="Pause / resume">
+      <span id="timerText">0:00</span>
+      <svg id="timerIcon" viewBox="0 0 12 14" width="11" height="13" aria-hidden="true">
+        <rect x="1" y="1" width="3.4" height="12" fill="currentColor"></rect>
+        <rect x="7.6" y="1" width="3.4" height="12" fill="currentColor"></rect>
+      </svg>
+    </button>
+
+    <div class="menu" data-menu>
+      <button class="tool-btn" data-menu-btn>Clear<span class="caret"></span></button>
+      <div class="menu-list">
+        <button data-action="clear-word">Word</button>
+        <button data-action="clear-puzzle">Puzzle</button>
+      </div>
+    </div>
+
+    <div class="menu" data-menu>
+      <button class="tool-btn" data-menu-btn>Check<span class="caret"></span></button>
+      <div class="menu-list">
+        <button data-action="check-square">Square</button>
+        <button data-action="check-word">Word</button>
+        <button data-action="check-puzzle">Puzzle</button>
+      </div>
+    </div>
+
+    <div class="menu" data-menu>
+      <button class="tool-btn" data-menu-btn>Reveal<span class="caret"></span></button>
+      <div class="menu-list">
+        <button data-action="reveal-square">Square</button>
+        <button data-action="reveal-word">Word</button>
+        <button data-action="reveal-puzzle">Puzzle</button>
+      </div>
+    </div>
+
+    <div class="menu" data-menu>
+      <button class="tool-btn" data-menu-btn>Difficulty<span class="caret"></span></button>
+      <div class="menu-list" id="difficultyMenu">
+        <button data-difficulty="easy">Easy</button>
+        <button data-difficulty="medium">Medium</button>
+        <button data-difficulty="hard">Hard</button>
+        <button data-difficulty="extreme">Extreme</button>
+      </div>
+    </div>
+
+    <button class="tool-btn" id="versusBtn">Versus</button>
+    <button class="tool-btn solid" id="newBtn">New Puzzle</button>
+  </div>
+</header>
+
+<div class="race-strip" id="raceStrip">
+  <div class="race-head">
+    <span class="race-code">Lobby <b id="raceCode"></b></span>
+    <span class="race-status" id="raceStatus"></span>
+    <button class="race-leave" id="raceLeave">Leave</button>
+  </div>
+  <ul class="race-players" id="racePlayers"></ul>
+</div>
+
+<main class="page">
+  <div class="board">
+    <div class="grid-column">
+      <div class="clue-bar" id="clueBar">
+        <button class="cb-arrow" id="prevClue" aria-label="Previous clue">
+          <svg viewBox="0 0 10 16" width="9" height="14"><path d="M8 1 L2 8 L8 15" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+        <div class="cb-body"><span class="cb-num" id="cbNum"></span><span class="cb-text" id="cbText"></span></div>
+        <button class="cb-arrow" id="nextClue" aria-label="Next clue">
+          <svg viewBox="0 0 10 16" width="9" height="14"><path d="M2 1 L8 8 L2 15" fill="none" stroke="currentColor" stroke-width="2"/></svg>
+        </button>
+      </div>
+
+      <div class="grid-wrap">
+        <div class="grid" id="grid"></div>
+        <div class="pause-cover" id="pauseCover">
+          <div class="pause-inner">
+            <p>Your puzzle is paused</p>
+            <button class="btn-primary" id="resumeBtn">Resume</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="clue-panel">
+      <section>
+        <h3>Across</h3>
+        <ol id="acrossList"></ol>
+      </section>
+      <section>
+        <h3>Down</h3>
+        <ol id="downList"></ol>
+      </section>
+    </div>
+  </div>
+
+  <div class="keyboard" id="keyboard"></div>
+</main>
+
+<div class="countdown" id="countdown"><span id="countdownNum">3</span></div>
+
+<div class="modal-backdrop" id="versusModal">
+  <div class="modal-card versus-card">
+    <h2 id="versusTitle">Versus</h2>
+
+    <div id="versusSetup">
+      <label class="field">
+        <span>Your name</span>
+        <input id="vsName" maxlength="16" placeholder="Player" autocomplete="off">
+      </label>
+
+      <div class="vs-tabs">
+        <button class="vs-tab active" data-vstab="create">Create lobby</button>
+        <button class="vs-tab" data-vstab="join">Join lobby</button>
+      </div>
+
+      <div class="vs-pane" data-vspane="create">
+        <label class="field">
+          <span>Difficulty</span>
+          <select id="vsDifficulty">
+            <option value="easy">Easy</option>
+            <option value="medium" selected>Medium</option>
+            <option value="hard">Hard</option>
+            <option value="extreme">Extreme</option>
+          </select>
+        </label>
+        <p class="vs-hint">Everyone races the same puzzle. First to finish wins.</p>
+        <button class="btn-primary" id="vsCreate">Create lobby</button>
+      </div>
+
+      <div class="vs-pane" data-vspane="join" hidden>
+        <label class="field">
+          <span>Lobby code</span>
+          <input id="vsCode" maxlength="4" placeholder="ABCD" autocomplete="off" spellcheck="false">
+        </label>
+        <button class="btn-primary" id="vsJoin">Join lobby</button>
+      </div>
+
+      <p class="vs-error" id="vsError"></p>
+    </div>
+
+    <div id="versusLobby" hidden>
+      <p class="vs-code-display">Lobby code<b id="vsCodeOut">····</b></p>
+      <p class="vs-hint" id="vsShareHint">Share this code — others join from the Versus menu.</p>
+      <ul class="vs-roster" id="vsRoster"></ul>
+      <button class="btn-primary" id="vsStart">Start race</button>
+      <p class="vs-hint" id="vsWaitHint">Waiting for the host to start…</p>
+      <button class="btn-ghost" id="vsCancel">Leave lobby</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="modal">
+  <div class="modal-card">
+    <div class="modal-mark" id="modalMark">★</div>
+    <h2 id="modalTitle">Congratulations!</h2>
+    <p id="modalBody">You solved The Mini in 0:42.</p>
+    <div class="modal-actions">
+      <button class="btn-primary" id="modalNew">New Puzzle</button>
+      <button class="btn-ghost" id="modalClose">Keep Looking</button>
+    </div>
+  </div>
+</div>
+
+<script src="words.js"></script>
+<script src="words4.js"></script>
+<script src="words5a.js"></script>
+<script src="words5b.js"></script>
+<script src="generator.js"></script>
+<script src="wordsource.js"></script>
+<script src="versus.js"></script>
+<script src="game.js"></script>
+</body>
+</html>
