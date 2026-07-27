@@ -327,16 +327,20 @@ const server = http.createServer(function (req, res) {
   serveStatic(req, res, parsed.pathname);
 });
 
-server.listen(PORT, '0.0.0.0', function () {
-  const nets = os.networkInterfaces();
-  const lan = [];
-  Object.keys(nets).forEach(function (name) {
-    (nets[name] || []).forEach(function (net) {
-      if (net.family === 'IPv4' && !net.internal) lan.push(net.address);
+if (require.main === module) {
+  server.listen(PORT, '0.0.0.0', function () {
+    const nets = os.networkInterfaces();
+    const lan = [];
+    Object.keys(nets).forEach(function (name) {
+      (nets[name] || []).forEach(function (net) {
+        if (net.family === 'IPv4' && !net.internal) lan.push(net.address);
+      });
     });
+    console.log('The Mini is running:');
+    console.log('  local     http://localhost:' + PORT);
+    lan.forEach(function (ip) { console.log('  this LAN  http://' + ip + ':' + PORT); });
+    console.log('Share a LAN address so others can join your versus lobby.');
   });
-  console.log('The Mini is running:');
-  console.log('  local     http://localhost:' + PORT);
-  lan.forEach(function (ip) { console.log('  this LAN  http://' + ip + ':' + PORT); });
-  console.log('Share a LAN address so others can join your versus lobby.');
-});
+}
+
+module.exports = server;
