@@ -190,6 +190,18 @@ html, body {
   flex-wrap: wrap;
 }
 
+.topbar-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .brand-title {
   font-size: 20px;
   font-weight: 700;
@@ -843,30 +855,49 @@ body.racing #newBtn { opacity: .4; pointer-events: none; }
   :root { --cell: min(18.5vw, 68px); }
 
   .topbar {
-    padding: 8px 12px;
-    gap: 6px;
+    padding: 10px 12px 8px;
+    gap: 10px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .topbar-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
   }
 
   .brand {
     display: flex;
-    align-items: baseline;
-    gap: 8px;
+    flex-direction: column;
   }
 
+  .brand-title { font-size: 16px; font-weight: 800; }
   .brand-date, .brand-note { display: none; }
 
-  .tools {
-    width: 100%;
-    overflow-x: auto;
-    white-space: nowrap;
-    padding: 4px 0 2px;
+  .header-controls {
+    display: flex;
+    align-items: center;
     gap: 6px;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
   }
-  .tools::-webkit-scrollbar { display: none; }
 
-  .tool-btn { padding: 6px 10px; font-size: 12px; border-radius: 12px; }
+  .tools {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    width: 100%;
+    overflow: visible;
+  }
+
+  .tools .menu { width: 100%; }
+  .tool-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 7px 6px;
+    font-size: 12px;
+    border-radius: 8px;
+  }
   .timer { padding: 4px 6px; font-size: 13.5px; }
 
   .page {

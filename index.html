@@ -36,31 +36,35 @@
 </div>
 
 <header class="topbar">
-  <div class="brand">
-    <div class="brand-title">The Mini Crossword</div>
-    <div class="brand-date" id="puzzleDate"></div>
-    <div class="brand-note" id="bankNote"></div>
+  <div class="topbar-main">
+    <div class="brand">
+      <div class="brand-title">The Mini Crossword</div>
+      <div class="brand-date" id="puzzleDate"></div>
+      <div class="brand-note" id="bankNote"></div>
+    </div>
+
+    <div class="header-controls">
+      <button class="icon-btn streak-badge" id="statsBtn" title="Your Stats & Profile" aria-label="Your Stats & Profile">
+        <span class="fire-icon">🔥</span>
+        <span id="streakHeaderCount">0</span>
+      </button>
+
+      <button class="icon-btn" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
+        <svg class="sun-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
+        <svg class="moon-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
+      </button>
+
+      <button class="timer" id="timerBtn" title="Pause / resume">
+        <span id="timerText">0:00</span>
+        <svg id="timerIcon" viewBox="0 0 12 14" width="11" height="13" aria-hidden="true">
+          <rect x="1" y="1" width="3.4" height="12" fill="currentColor"></rect>
+          <rect x="7.6" y="1" width="3.4" height="12" fill="currentColor"></rect>
+        </svg>
+      </button>
+    </div>
   </div>
 
   <div class="tools">
-    <button class="icon-btn streak-badge" id="statsBtn" title="Your Stats & Profile" aria-label="Your Stats & Profile">
-      <span class="fire-icon">🔥</span>
-      <span id="streakHeaderCount">0</span>
-    </button>
-
-    <button class="icon-btn" id="themeToggle" title="Toggle dark mode" aria-label="Toggle dark mode">
-      <svg class="sun-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-      <svg class="moon-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>
-    </button>
-
-    <button class="timer" id="timerBtn" title="Pause / resume">
-      <span id="timerText">0:00</span>
-      <svg id="timerIcon" viewBox="0 0 12 14" width="11" height="13" aria-hidden="true">
-        <rect x="1" y="1" width="3.4" height="12" fill="currentColor"></rect>
-        <rect x="7.6" y="1" width="3.4" height="12" fill="currentColor"></rect>
-      </svg>
-    </button>
-
     <div class="menu" data-menu>
       <button class="tool-btn" data-menu-btn>Clear<span class="caret"></span></button>
       <div class="menu-list">
