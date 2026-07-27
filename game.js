@@ -5,7 +5,7 @@
   const SIZE = 5;
   const STORE_KEY = 'mini-clone-state-v1';
   const DIFF_KEY = 'mini-difficulty';
-  const DIFF_LABEL = { easy: 'Easy', medium: 'Medium', hard: 'Hard', extreme: 'Extreme' };
+  const DIFF_LABEL = { veryeasy: 'Very Easy', easy: 'Easy', medium: 'Medium', hard: 'Hard', extreme: 'Extreme', impossible: 'Impossible' };
 
   function currentDifficulty() {
     try {

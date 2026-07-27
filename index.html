@@ -113,10 +113,12 @@
     <div class="menu" data-menu>
       <button class="tool-btn" data-menu-btn>Difficulty<span class="caret"></span></button>
       <div class="menu-list" id="difficultyMenu">
+        <button data-difficulty="veryeasy">Very Easy</button>
         <button data-difficulty="easy">Easy</button>
         <button data-difficulty="medium">Medium</button>
         <button data-difficulty="hard">Hard</button>
         <button data-difficulty="extreme">Extreme</button>
+        <button data-difficulty="impossible">Impossible</button>
       </div>
     </div>
 
@@ -246,10 +248,12 @@
         <label class="field">
           <span>Difficulty</span>
           <select id="vsDifficulty">
+            <option value="veryeasy">Very Easy</option>
             <option value="easy">Easy</option>
             <option value="medium" selected>Medium</option>
             <option value="hard">Hard</option>
             <option value="extreme">Extreme</option>
+            <option value="impossible">Impossible</option>
           </select>
         </label>
         <p class="vs-hint">Everyone races the same puzzle. First to finish wins.</p>
@@ -304,10 +308,12 @@
       </div>
 
       <div class="lb-diff-tabs">
-        <button class="lb-diff-tab active" data-lbdiff="medium">Medium</button>
+        <button class="lb-diff-tab" data-lbdiff="veryeasy">Very Easy</button>
         <button class="lb-diff-tab" data-lbdiff="easy">Easy</button>
+        <button class="lb-diff-tab active" data-lbdiff="medium">Medium</button>
         <button class="lb-diff-tab" data-lbdiff="hard">Hard</button>
         <button class="lb-diff-tab" data-lbdiff="extreme">Extreme</button>
+        <button class="lb-diff-tab" data-lbdiff="impossible">Impossible</button>
       </div>
     </div>
 

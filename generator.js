@@ -57,10 +57,12 @@
      common or rare fill; patterns control how open the grid is (fewer black
      squares means longer, more constrained entries). */
   const DIFFICULTY = {
-    easy:    { minFreq: 12,  bias: 'common', patterns: [0, 1, 2, 3, 4] },
-    medium:  { minFreq: 4,   bias: 'common', patterns: [0, 1, 2, 3, 4, 5, 6] },
-    hard:    { minFreq: 1.2, bias: 'rare',   patterns: [5, 6, 7, 8] },
-    extreme: { minFreq: 0,   bias: 'rare',   patterns: [7, 8, 5, 6] }
+    veryeasy:   { minFreq: 30,  bias: 'common', patterns: [0, 1, 2] },
+    easy:       { minFreq: 12,  bias: 'common', patterns: [0, 1, 2, 3, 4] },
+    medium:     { minFreq: 4,   bias: 'common', patterns: [0, 1, 2, 3, 4, 5, 6] },
+    hard:       { minFreq: 1.2, bias: 'rare',   patterns: [5, 6, 7, 8] },
+    extreme:    { minFreq: 0.3, bias: 'rare',   patterns: [6, 7, 8] },
+    impossible: { minFreq: 0,   bias: 'rare',   patterns: [7, 8] }
   };
 
   const MIN_CANDIDATES = 60;
