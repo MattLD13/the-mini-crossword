@@ -1347,6 +1347,7 @@
     const label = (DIFF_LABEL[difficulty] || 'Medium') + ' · freshly generated';
     mount(blankState(puzzle, label, 'random'), label);
     save();
+    showNotice('Completed today\'s ' + (DIFF_LABEL[difficulty] || 'Medium') + ' Daily! Playing a fresh practice puzzle.');
   }
 
   function startPuzzle() {
