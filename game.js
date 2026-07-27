@@ -398,6 +398,7 @@
 
   document.addEventListener('keydown', function (e) {
     if (!state) return;
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT')) return;
     if (el.modal.classList.contains('on')) {
       if (e.key === 'Escape') closeModal();
       return;

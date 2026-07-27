@@ -644,59 +644,60 @@ body.racing #newBtn { opacity: .4; pointer-events: none; }
   font-weight: 700;
   letter-spacing: .06em;
   text-transform: uppercase;
-  color: #666;
+  color: var(--subtle);
   margin-bottom: 5px;
 }
 .field input, .field select {
   width: 100%;
   padding: 10px 12px;
-  border: 1px solid #ccc;
+  border: 1px solid var(--button-border);
   border-radius: 6px;
   font-family: var(--font);
   font-size: 15px;
-  background: #fff;
-  color: #111;
+  background: var(--cell-bg);
+  color: var(--ink);
 }
-.field input:focus, .field select:focus { outline: 2px solid #0a63c9; outline-offset: -1px; }
+.field input:focus, .field select:focus { outline: 2px solid var(--revealed); outline-offset: -1px; }
 #vsCode { text-transform: uppercase; letter-spacing: 6px; font-weight: 700; text-align: center; }
 
 .vs-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
 .vs-tab {
   flex: 1;
   padding: 9px 8px;
-  border: 1px solid #ddd;
-  background: #fff;
+  border: 1px solid var(--button-border);
+  background: var(--button-bg);
   border-radius: 16px;
   font-family: var(--font);
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  color: #444;
+  color: var(--subtle);
 }
-.vs-tab.active { background: #1a1a1a; border-color: #1a1a1a; color: #fff; }
+.vs-tab.active { background: var(--solid-bg); border-color: var(--solid-bg); color: var(--solid-text); }
 
 .vs-pane .btn-primary { width: 100%; }
-.vs-hint { font-size: 12.5px; color: #777; margin: 10px 0 14px; line-height: 1.4; text-align: center; }
+.vs-hint { font-size: 12.5px; color: var(--subtle); margin: 10px 0 14px; line-height: 1.4; text-align: center; }
 .vs-error { font-size: 13px; color: #d0021b; text-align: center; margin: 12px 0 0; min-height: 18px; }
 
-.vs-code-display { text-align: center; font-size: 12px; color: #777; margin: 0 0 4px; }
+.vs-code-display { text-align: center; font-size: 12px; color: var(--subtle); margin: 0 0 4px; }
 .vs-code-display b {
   display: block;
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   font-size: 38px;
   letter-spacing: 10px;
-  color: #111;
+  color: var(--ink);
   margin-top: 4px;
   text-indent: 10px;
 }
 .vs-roster { list-style: none; margin: 14px 0; padding: 0; }
 .vs-roster li {
   padding: 8px 12px;
-  background: #f4f6f8;
+  background: var(--cross);
   border-radius: 6px;
   margin-bottom: 5px;
   font-size: 14px;
   font-weight: 500;
+  color: var(--ink);
 }
 #versusLobby .btn-primary { width: 100%; margin-bottom: 8px; }
 #versusLobby .btn-primary:disabled { background: #999; cursor: default; }
