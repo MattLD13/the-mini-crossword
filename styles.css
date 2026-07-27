@@ -624,6 +624,19 @@ html, body {
   cursor: pointer;
 }
 .race-leave:hover { background: var(--button-hover); }
+.race-rematch {
+  margin-left: auto;
+  border: none;
+  background: var(--brand);
+  color: #ffffff;
+  border-radius: 14px;
+  padding: 5px 12px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.race-rematch:hover { background: var(--brand-hover); }
 
 .race-players {
   list-style: none;

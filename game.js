@@ -1034,6 +1034,12 @@
         : 'Race over';
     } else el.raceStatus.textContent = 'Race in progress';
 
+    el.raceRematch = document.getElementById('raceRematch');
+    if (el.raceRematch) {
+      const isRaceEnded = vs.finished || (state && state.solved) || vs.players.some(function (p) { return p.solved; });
+      el.raceRematch.style.display = isRaceEnded ? 'inline-block' : 'none';
+    }
+
     el.racePlayers.innerHTML = '';
     vs.players.forEach(function (p) {
       const li = document.createElement('li');
@@ -1628,6 +1634,20 @@
     endRace();
     newPuzzle();
   });
+
+  const raceRematchBtn = document.getElementById('raceRematch');
+  if (raceRematchBtn) {
+    raceRematchBtn.addEventListener('click', function () {
+      closeModal();
+      const diff = currentDifficulty();
+      let nextPuzzle;
+      try { nextPuzzle = makePuzzle(null, diff); } catch (e) { nextPuzzle = makePuzzle(null, 'medium'); }
+      Versus.rematch(nextPuzzle, diff).then(function () {
+        startRacePuzzle(nextPuzzle, diff);
+        showVersusModal();
+      }).catch(function (err) { showNotice(err.message || 'Rematch failed'); });
+    });
+  }
 
   el.versusModal.addEventListener('click', function (e) {
     if (e.target === el.versusModal) hideVersusModal();
