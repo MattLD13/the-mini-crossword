@@ -1320,13 +1320,31 @@
     else startTimer();
   }
 
+  function isDailyCompleted(difficulty) {
+    const p = loadProfile() || defaultProfile();
+    const today = new Date().toISOString().split('T')[0];
+    const diff = difficulty || currentDifficulty();
+    return (p.history || []).some(function (h) {
+      return h.date === today && (h.difficulty || 'medium') === diff;
+    });
+  }
+
   function newPuzzle() {
     // Starting a solo puzzle means stepping out of any lobby.
     if (race.on) { Versus.leave(); endRace(); }
-    const seed = Math.floor(Math.random() * 2147483647);
     const difficulty = currentDifficulty();
+
+    if (!isDailyCompleted(difficulty)) {
+      const puzzle = makePuzzle(dailySeed(), difficulty, true);
+      const label = todayLabel() + ' · ' + (DIFF_LABEL[difficulty] || 'Medium');
+      mount(blankState(puzzle, label, 'daily'), label);
+      save();
+      return;
+    }
+
+    const seed = Math.floor(Math.random() * 2147483647);
     const puzzle = makePuzzle(seed, difficulty);
-    const label = DIFF_LABEL[difficulty] + ' · freshly generated';
+    const label = (DIFF_LABEL[difficulty] || 'Medium') + ' · freshly generated';
     mount(blankState(puzzle, label, 'random'), label);
     save();
   }
@@ -1334,11 +1352,7 @@
   function startPuzzle() {
     const saved = load();
     if (saved) { mount(saved, saved.label); return; }
-    const difficulty = currentDifficulty();
-    const puzzle = makePuzzle(dailySeed(), difficulty, true);
-    const label = todayLabel() + ' · ' + DIFF_LABEL[difficulty];
-    mount(blankState(puzzle, label, 'daily'), label);
-    save();
+    newPuzzle();
   }
 
   function noteSource(source, error) {
