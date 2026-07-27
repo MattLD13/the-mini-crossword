@@ -279,6 +279,29 @@ const api = {
     sendJSON(res, 200, { ok: true });
   },
 
+  'POST /api/rematch': async function (req, res) {
+    const body = await readBody(req);
+    const room = getRoom(res, body.code);
+    if (!room) return;
+    if (!body.puzzle || !Array.isArray(body.puzzle.solution)) {
+      return sendJSON(res, 400, { error: 'A new puzzle is required for rematch' });
+    }
+    room.puzzle = body.puzzle;
+    if (body.difficulty) room.difficulty = String(body.difficulty);
+    room.startAt = null;
+    room.finished = false;
+    room.finishers = 0;
+    room.players.forEach(function (p) {
+      p.progress = 0;
+      p.solved = false;
+      p.finishSeconds = null;
+      p.place = null;
+      p.lastSeen = Date.now();
+    });
+    bump(room);
+    sendJSON(res, 200, { ok: true, state: publicState(room) });
+  },
+
   'POST /api/submit-score': async function (req, res) {
     const body = await readBody(req);
     if (!body.name || !body.difficulty) {

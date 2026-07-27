@@ -625,6 +625,10 @@
   }
 
   function showCongrats() {
+    const rematchBtn = document.getElementById('modalRematch');
+    if (rematchBtn) rematchBtn.style.display = race.on ? 'inline-block' : 'none';
+    if (el.modalNew) el.modalNew.style.display = race.on ? 'none' : 'inline-block';
+
     if (race.on) {
       const me = Versus.me();
       const place = me && me.place;
@@ -656,7 +660,7 @@
 
   function closeModal() { el.modal.classList.remove('on'); }
 
-  function showNotice(msg) {
+  function showNotice(msg, duration) {
     let notice = document.getElementById('toastNotice');
     if (!notice) {
       notice = document.createElement('div');
@@ -667,9 +671,11 @@
     notice.textContent = msg;
     notice.classList.add('on');
     clearTimeout(notice._timer);
+    const isHintMsg = msg.includes('Hint') || msg.includes('contains');
+    const ms = duration || (isHintMsg ? 11000 : 3000);
     notice._timer = setTimeout(function () {
       notice.classList.remove('on');
-    }, 2200);
+    }, ms);
   }
 
   /* ---------------- timer ---------------- */
@@ -740,7 +746,10 @@
           const diff = earnedChecks - race.lastCheckSec;
           race.checks = (race.checks || 0) + diff;
           race.lastCheckSec = earnedChecks;
-          showNotice('+1 Check Credit earned! (' + race.checks + ' available)');
+          if (!race.notifiedCheck) {
+            showNotice('+1 Check Credit earned! (' + race.checks + ' available)');
+            race.notifiedCheck = true;
+          }
           updateVersusToolBadges();
         }
         const earnedHints = Math.floor(state.seconds / 10);
@@ -748,7 +757,10 @@
           const diff = earnedHints - race.lastHintSec;
           race.hints = (race.hints || 0) + diff;
           race.lastHintSec = earnedHints;
-          showNotice('+1 Hint Credit earned! (' + race.hints + ' available)');
+          if (!race.notifiedHint) {
+            showNotice('+1 Hint Credit earned! (' + race.hints + ' available)');
+            race.notifiedHint = true;
+          }
           updateVersusToolBadges();
         }
         const earnedReveals = Math.floor(state.seconds / 60);
@@ -756,7 +768,10 @@
           const diff = earnedReveals - race.lastRevealSec;
           race.reveals = (race.reveals || 0) + diff;
           race.lastRevealSec = earnedReveals;
-          showNotice('+1 Reveal Credit earned! (' + race.reveals + ' available)');
+          if (!race.notifiedReveal) {
+            showNotice('+1 Reveal Credit earned! (' + race.reveals + ' available)');
+            race.notifiedReveal = true;
+          }
           updateVersusToolBadges();
         }
       }
@@ -879,6 +894,19 @@
   el.modalNew.addEventListener('click', function () { closeModal(); newPuzzle(); });
   el.modalClose.addEventListener('click', closeModal);
 
+  const modalRematchBtn = document.getElementById('modalRematch');
+  if (modalRematchBtn) {
+    modalRematchBtn.addEventListener('click', function () {
+      closeModal();
+      const diff = currentDifficulty();
+      let nextPuzzle;
+      try { nextPuzzle = makePuzzle(null, diff); } catch (e) { nextPuzzle = makePuzzle(null, 'medium'); }
+      Versus.rematch(nextPuzzle, diff).then(function () {
+        startRacePuzzle(nextPuzzle, diff);
+      }).catch(function (err) { showNotice(err.message || 'Rematch failed'); });
+    });
+  }
+
   /* ---------------- difficulty ---------------- */
 
   function markDifficultyMenu() {
@@ -897,7 +925,7 @@
 
   /* ---------------- versus ---------------- */
 
-  const race = { on: false, sendTimer: null, lastSent: -1, checks: 0, hints: 0, reveals: 0, lastCheckSec: 0, lastHintSec: 0, lastRevealSec: 0 };
+  const race = { on: false, sendTimer: null, lastSent: -1, checks: 0, hints: 0, reveals: 0, lastCheckSec: 0, lastHintSec: 0, lastRevealSec: 0, notifiedCheck: false, notifiedHint: false, notifiedReveal: false };
 
   function whiteCellCount() {
     let n = 0;
@@ -939,6 +967,9 @@
     race.lastCheckSec = 0;
     race.lastHintSec = 0;
     race.lastRevealSec = 0;
+    race.notifiedCheck = false;
+    race.notifiedHint = false;
+    race.notifiedReveal = false;
     updateVersusToolBadges();
     document.body.classList.add('racing');
     const label = 'Versus · ' + (DIFF_LABEL[difficulty] || 'Medium');

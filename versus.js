@@ -167,6 +167,18 @@
         api('/api/leave', { method: 'POST', body: JSON.stringify({ code: code, playerId: playerId }) })
           .catch(function () {});
       }
+    },
+
+    rematch: function (puzzle, difficulty) {
+      if (!state.active) return Promise.resolve();
+      return api('/api/rematch', {
+        method: 'POST',
+        body: JSON.stringify({ code: state.code, playerId: state.playerId, puzzle: puzzle, difficulty: difficulty || state.difficulty })
+      }).then(function (res) {
+        state.started = false;
+        applyState(res.state);
+        return res;
+      });
     }
   };
 
