@@ -498,7 +498,14 @@ html, body {
 .clue-panel li.done .text { color: var(--muted); }
 
 /* ---------------- keyboard ---------------- */
-.keyboard { display: none; margin: 18px auto 0; max-width: 520px; }
+.keyboard {
+  display: none;
+  margin: 18px auto 0;
+  max-width: 520px;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+}
 .kb-row { display: flex; justify-content: center; gap: 5px; margin-bottom: 6px; }
 .kb-key {
   flex: 1;
@@ -512,6 +519,10 @@ html, body {
   font-weight: 500;
   cursor: pointer;
   color: var(--ink);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
 .kb-key:active { background: var(--kb-active); }
 .kb-key.wide { flex: 1.6; font-size: 14px; font-weight: 600; }

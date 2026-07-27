@@ -452,6 +452,17 @@
 
   /* ---------------- on-screen keyboard ---------------- */
 
+  function addKeyHandler(btn, handler) {
+    btn.addEventListener('pointerdown', function (e) {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();
+      handler();
+    });
+    btn.addEventListener('click', function (e) {
+      e.preventDefault();
+    });
+  }
+
   function buildKeyboard() {
     const rows = ['QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
     el.keyboard.innerHTML = '';
@@ -462,21 +473,21 @@
         const space = document.createElement('button');
         space.className = 'kb-key wide';
         space.textContent = 'space';
-        space.addEventListener('click', toggleDir);
+        addKeyHandler(space, toggleDir);
         div.appendChild(space);
       }
       row.split('').forEach(function (ch) {
         const b = document.createElement('button');
         b.className = 'kb-key';
         b.textContent = ch;
-        b.addEventListener('click', function () { typeLetter(ch); });
+        addKeyHandler(b, function () { typeLetter(ch); });
         div.appendChild(b);
       });
       if (i === 2) {
         const del = document.createElement('button');
         del.className = 'kb-key wide';
         del.textContent = 'delete';
-        del.addEventListener('click', backspace);
+        addKeyHandler(del, backspace);
         div.appendChild(del);
       }
       el.keyboard.appendChild(div);
