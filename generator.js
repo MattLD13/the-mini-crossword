@@ -57,12 +57,12 @@
      common or rare fill; patterns control how open the grid is (fewer black
      squares means longer, more constrained entries). */
   const DIFFICULTY = {
-    veryeasy:   { minFreq: 30,  bias: 'common', patterns: [0, 1, 2] },
-    easy:       { minFreq: 12,  bias: 'common', patterns: [0, 1, 2, 3, 4] },
-    medium:     { minFreq: 4,   bias: 'common', patterns: [0, 1, 2, 3, 4, 5, 6] },
-    hard:       { minFreq: 1.2, bias: 'rare',   patterns: [5, 6, 7, 8] },
-    extreme:    { minFreq: 0.3, bias: 'rare',   patterns: [6, 7, 8] },
-    impossible: { minFreq: 0,   bias: 'rare',   patterns: [7, 8] }
+    veryeasy:   { minFreq: 30,  bias: 'common',     patterns: [0, 1, 2] },
+    easy:       { minFreq: 12,  bias: 'common',     patterns: [0, 1, 2, 3, 4] },
+    medium:     { minFreq: 4,   bias: 'common',     patterns: [0, 1, 2, 3, 4, 5, 6] },
+    hard:       { minFreq: 1.2, bias: 'rare',       patterns: [5, 6, 7, 8] },
+    extreme:    { minFreq: 0.3, bias: 'rare',       patterns: [6, 7, 8, 9] },
+    impossible: { minFreq: 0,   bias: 'ultra-rare', patterns: [9, 7, 8] }
   };
 
   const MIN_CANDIDATES = 60;
@@ -77,7 +77,6 @@
       const all = bank.byLen[len];
       let floor = conf.minFreq;
       let picked = all.filter(function (w) { return (bank.freq[w] || 0) >= floor; });
-      // Relax the floor rather than hand the solver an unfillable domain.
       while (picked.length < MIN_CANDIDATES && floor > 0) {
         floor = floor > 1 ? floor / 2 : 0;
         picked = all.filter(function (w) { return (bank.freq[w] || 0) >= floor; });
@@ -128,7 +127,8 @@
     ['#....', '.....', '.....', '.....', '....#'],
     ['....#', '.....', '.....', '.....', '#....'],
     ['#....', '.....', '.....', '.....', '#....'],
-    ['....#', '.....', '.....', '.....', '....#']
+    ['....#', '.....', '.....', '.....', '....#'],
+    ['.....', '.....', '.....', '.....', '.....']
   ];
 
   /* ---------- slot extraction ---------- */
@@ -210,10 +210,10 @@
      settings and rarer ones on hard, while keeping puzzles varied. */
   function orderCandidates(words, rnd, bias, freq) {
     if (bias === 'none') return shuffle(words.slice(), rnd);
-    const dir = bias === 'rare' ? 1 : -1;
+    const dir = bias === 'ultra-rare' ? 8.0 : bias === 'rare' ? 1.5 : -1.0;
     return words.map(function (w) {
       const weight = Math.log(1 + (freq[w] || 0)) * dir;
-      return { w: w, key: weight + rnd() * 2.2 };
+      return { w: w, key: weight + rnd() * 2.5 };
     }).sort(function (a, b) { return a.key - b.key; })
       .map(function (x) { return x.w; });
   }
@@ -308,13 +308,19 @@
 
       const entries = built.slots.map(function (slot, si) {
         const word = solution[si];
-        const options = CLUES()[word];
+        const options = CLUES()[word] || ['A crossword answer'];
+        let pickedClue;
+        if (difficulty === 'impossible' && options.length > 1) {
+          pickedClue = options[options.length - 1];
+        } else {
+          pickedClue = options[Math.floor(rnd() * options.length)];
+        }
         return {
           id: slot.id,
           num: slot.num,
           dir: slot.dir,
           answer: word,
-          clue: options[Math.floor(rnd() * options.length)],
+          clue: pickedClue,
           cells: slot.cells
         };
       });
