@@ -319,10 +319,15 @@
       <button class="modal-close-icon" id="archiveClose">&times;</button>
     </div>
     <p class="vs-hint" id="archiveHint">Pick any day to play it at your current difficulty. Days you have solved show your time — tap one to beat it.</p>
+    <div class="cal-nav">
+      <button class="cal-arrow" id="calPrev" aria-label="Previous two weeks">&lsaquo;</button>
+      <span class="cal-range" id="calRange"></span>
+      <button class="cal-arrow" id="calNext" aria-label="Next two weeks">&rsaquo;</button>
+    </div>
     <div class="cal-dows" aria-hidden="true">
       <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
     </div>
-    <div class="cal-scroll" id="calScroll"></div>
+    <div class="cal-grid" id="calGrid"></div>
     <div class="modal-actions">
       <button class="btn-ghost" id="archiveToday">Today</button>
       <button class="btn-ghost" id="archiveRandom">Surprise me</button>
@@ -330,14 +335,20 @@
   </div>
 </div>
 
-<div class="modal-backdrop" id="shareFallback">
-  <div class="modal-card">
-    <h2>Challenge link</h2>
-    <p class="vs-hint">Send this to a friend — it opens this exact puzzle.</p>
-    <input id="shareText" class="share-text" readonly>
+<div class="modal-backdrop" id="shareModal">
+  <div class="modal-card share-card">
+    <div class="stats-header">
+      <h2>Share this puzzle</h2>
+      <button class="modal-close-icon" id="shareClose">&times;</button>
+    </div>
+    <p class="vs-hint" id="shareBlurb"></p>
+    <div class="share-row">
+      <input id="shareText" class="share-text" readonly aria-label="Challenge link">
+      <button class="btn-primary share-copy" id="shareCopy">Copy</button>
+    </div>
+    <p class="share-note" id="shareNote">The link carries the whole puzzle, so it works even if your friend has never opened The Mini.</p>
     <div class="modal-actions">
-      <button class="btn-primary" id="shareCopy">Copy</button>
-      <button class="btn-ghost" id="shareClose">Close</button>
+      <button class="btn-ghost" id="shareNative" style="display:none;">Share via…</button>
     </div>
   </div>
 </div>

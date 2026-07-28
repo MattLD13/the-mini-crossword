@@ -1210,14 +1210,18 @@
   // The date line doubles as the archive entry point (no extra toolbar button).
   if (el.date) el.date.addEventListener('click', openArchive);
 
-  const calScroll = document.getElementById('calScroll');
-  if (calScroll) {
-    calScroll.addEventListener('click', function (e) {
+  const calGrid = document.getElementById('calGrid');
+  if (calGrid) {
+    calGrid.addEventListener('click', function (e) {
       const day = e.target.closest('.cal-day[data-date]');
       if (!day || day.disabled) return;
       playArchive(day.dataset.date);
     });
   }
+  const calPrev = document.getElementById('calPrev');
+  if (calPrev) calPrev.addEventListener('click', function () { pageCalendar(-1); });
+  const calNext = document.getElementById('calNext');
+  if (calNext) calNext.addEventListener('click', function () { pageCalendar(1); });
 
   const archiveToday = document.getElementById('archiveToday');
   if (archiveToday) {
@@ -1238,21 +1242,21 @@
   if (modalShareBtn) modalShareBtn.addEventListener('click', shareResult);
 
   const shareCopyBtn = document.getElementById('shareCopy');
-  if (shareCopyBtn) {
-    shareCopyBtn.addEventListener('click', function () {
-      const area = document.getElementById('shareText');
-      if (!area) return;
-      area.select();
-      // execCommand is deprecated but is the only copy path left when the
-      // Clipboard API is blocked (insecure origin, denied permission).
-      try { document.execCommand('copy'); showNotice('Copied'); }
-      catch (e) { showNotice('Press Ctrl+C to copy'); }
+  if (shareCopyBtn) shareCopyBtn.addEventListener('click', copyShareLink);
+
+  const shareNativeBtn = document.getElementById('shareNative');
+  if (shareNativeBtn) {
+    shareNativeBtn.addEventListener('click', function () {
+      const field = document.getElementById('shareText');
+      if (!field || !navigator.share) return;
+      navigator.share({ title: 'The Mini', url: field.value }).catch(function () {});
     });
   }
+
   const shareCloseBtn = document.getElementById('shareClose');
   if (shareCloseBtn) {
     shareCloseBtn.addEventListener('click', function () {
-      const box = document.getElementById('shareFallback');
+      const box = document.getElementById('shareModal');
       if (box) box.classList.remove('on');
     });
   }
@@ -1887,64 +1891,108 @@
     return map;
   }
 
-  const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'];
+  const DAY_MS = 86400000;
+  const WINDOW_DAYS = 14;
+  const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
-  function renderMonth(year, month, done, today) {
-    const first = new Date(Date.UTC(year, month, 1));
-    const lead = first.getUTCDay();
-    const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  // ISO date of the first day shown; null until the archive is first opened.
+  let calStart = null;
 
-    let html = '<section class="cal-month"><h3>' + MONTH_NAMES[month] + ' ' + year +
-      '</h3><div class="cal-grid">';
-    for (let i = 0; i < lead; i++) html += '<span class="cal-day blank"></span>';
+  /* Windows are aligned to Sunday so the day-of-week columns stay honest. */
+  function startOfWeekUTC(d) {
+    const x = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+    x.setUTCDate(x.getUTCDate() - x.getUTCDay());
+    return x;
+  }
 
-    for (let day = 1; day <= days; day++) {
-      const iso = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
-      const future = iso > today;
+  function shiftDays(d, n) {
+    return new Date(d.getTime() + n * DAY_MS);
+  }
+
+  /* The window ending with the current week — last week plus this one. */
+  function latestWindowStart() {
+    return shiftDays(startOfWeekUTC(new Date()), -7);
+  }
+
+  function earliestWindowStart() {
+    return startOfWeekUTC(dateFromISO(ARCHIVE_START));
+  }
+
+  function clampWindow(d) {
+    const min = earliestWindowStart(), max = latestWindowStart();
+    if (d.getTime() < min.getTime()) return min;
+    if (d.getTime() > max.getTime()) return max;
+    return d;
+  }
+
+  function dayLabel(d, iso, today) {
+    const day = d.getUTCDate();
+    // Name the month on its first day so a window spanning two months reads
+    // correctly without a separate heading.
+    return day === 1 ? MONTH_SHORT[d.getUTCMonth()] + ' 1' : String(day);
+  }
+
+  function buildCalendar() {
+    const grid = document.getElementById('calGrid');
+    if (!grid) return;
+    if (!calStart) calStart = isoOf(latestWindowStart());
+
+    const done = solvedTimes();
+    const today = todayISO();
+    const start = clampWindow(dateFromISO(calStart));
+    calStart = isoOf(start);
+
+    let html = '';
+    for (let i = 0; i < WINDOW_DAYS; i++) {
+      const d = shiftDays(start, i);
+      const iso = isoOf(d);
+      // Windows are Sunday-aligned, so the earliest one can reach back past the
+      // archive's start; those days are shown but not playable.
+      const outOfRange = iso > today || iso < ARCHIVE_START;
       const time = done[iso];
+
       const classes = ['cal-day'];
       if (time !== undefined) classes.push('done');
       if (iso === today) classes.push('today');
 
-      const label = iso === today ? 'Today' : iso;
+      const name = iso === today ? 'Today' : iso;
       html += '<button class="' + classes.join(' ') + '" data-date="' + iso + '"' +
-        (future ? ' disabled' : '') +
-        ' aria-label="' + label + (time !== undefined ? ', solved in ' + formatTime(time) : '') + '">' +
-        '<span class="cal-num">' + day + '</span>' +
+        (outOfRange ? ' disabled' : '') +
+        ' aria-label="' + name + (time !== undefined ? ', solved in ' + formatTime(time) : '') + '">' +
+        '<span class="cal-num">' + dayLabel(d, iso, today) + '</span>' +
         (time !== undefined ? '<span class="cal-time">' + formatTime(time) + '</span>' : '') +
         '</button>';
     }
-    return html + '</div></section>';
+    grid.innerHTML = html;
+
+    const range = document.getElementById('calRange');
+    if (range) {
+      const end = shiftDays(start, WINDOW_DAYS - 1);
+      const sameYear = start.getUTCFullYear() === end.getUTCFullYear();
+      range.textContent =
+        MONTH_SHORT[start.getUTCMonth()] + ' ' + start.getUTCDate() +
+        (sameYear ? '' : ', ' + start.getUTCFullYear()) + ' – ' +
+        MONTH_SHORT[end.getUTCMonth()] + ' ' + end.getUTCDate() + ', ' + end.getUTCFullYear();
+    }
+
+    const prev = document.getElementById('calPrev');
+    if (prev) prev.disabled = start.getTime() <= earliestWindowStart().getTime();
+    const next = document.getElementById('calNext');
+    if (next) next.disabled = start.getTime() >= latestWindowStart().getTime();
   }
 
-  function buildCalendar() {
-    const scroll = document.getElementById('calScroll');
-    if (!scroll) return;
-    const done = solvedTimes();
-    const today = todayISO();
-    const start = dateFromISO(ARCHIVE_START);
-    const now = new Date();
-    const endY = now.getUTCFullYear(), endM = now.getUTCMonth();
-
-    let y = start.getUTCFullYear(), m = start.getUTCMonth();
-    let html = '';
-    while (y < endY || (y === endY && m <= endM)) {
-      html += renderMonth(y, m, done, today);
-      if (++m > 11) { m = 0; y++; }
-    }
-    scroll.innerHTML = html;
-
-    // Open on the current month rather than 2024.
-    const todayBtn = scroll.querySelector('.cal-day.today');
-    if (todayBtn) todayBtn.scrollIntoView({ block: 'center' });
-    else scroll.scrollTop = scroll.scrollHeight;
+  function pageCalendar(deltaWindows) {
+    if (!calStart) return;
+    calStart = isoOf(clampWindow(shiftDays(dateFromISO(calStart), deltaWindows * WINDOW_DAYS)));
+    buildCalendar();
   }
 
   function playArchive(iso) {
     const d = dateFromISO(iso);
     if (!d) { showNotice('Pick a valid date'); return; }
     if (iso > todayISO()) { showNotice('That day has not happened yet'); return; }
+    if (iso < ARCHIVE_START) { showNotice('The archive starts in 2024'); return; }
 
     // Today is the live daily, not an archive replay — it still has to count
     // toward the streak and the global board.
@@ -1980,6 +2028,10 @@
   function openArchive() {
     const modal = document.getElementById('archiveModal');
     if (!modal) return;
+    // Open on the window holding whatever is being played, so leaving and
+    // reopening the archive does not lose your place.
+    const anchor = (state && state.archiveDate) ? dateFromISO(state.archiveDate) : new Date();
+    calStart = isoOf(clampWindow(shiftDays(startOfWeekUTC(anchor), -7)));
     buildCalendar();
     modal.classList.add('on');
   }
@@ -2004,38 +2056,72 @@
     });
   }
 
+  /* Always show the link rather than copying it invisibly — a silent clipboard
+     write gives no proof anything happened, and no way to see what you are
+     about to send. */
   function shareResult() {
     const url = buildShareUrl();
     if (!url) return;
 
-    // navigator.share needs a user gesture and is the nicest path on mobile;
-    // fall back to the clipboard, then to a selectable field.
-    if (navigator.share) {
-      navigator.share({ title: 'The Mini', url: url })
-        .catch(function () { copyShare(url); });
-      return;
+    const modal = document.getElementById('shareModal');
+    const field = document.getElementById('shareText');
+    if (!modal || !field) return;
+
+    field.value = url;
+
+    const blurb = document.getElementById('shareBlurb');
+    if (blurb) {
+      blurb.textContent = state.solved
+        ? 'Your time of ' + formatTime(state.seconds) +
+          ' is baked into this link — whoever opens it plays this exact puzzle and races you.'
+        : 'This link opens this exact puzzle. Finish it first and the link will carry your time too.';
     }
-    copyShare(url);
+
+    // Native sheet stays available on mobile, but as a choice, not the default.
+    const native = document.getElementById('shareNative');
+    if (native) native.style.display = navigator.share ? 'inline-block' : 'none';
+
+    resetCopyButton();
+    modal.classList.add('on');
+    field.focus();
+    field.select();
   }
 
-  function copyShare(text) {
+  function resetCopyButton() {
+    const btn = document.getElementById('shareCopy');
+    if (!btn) return;
+    btn.textContent = 'Copy';
+    btn.classList.remove('copied');
+  }
+
+  function copyShareLink() {
+    const field = document.getElementById('shareText');
+    const btn = document.getElementById('shareCopy');
+    if (!field) return;
+
+    function done() {
+      if (!btn) return;
+      btn.textContent = 'Copied';
+      btn.classList.add('copied');
+      clearTimeout(btn._timer);
+      btn._timer = setTimeout(resetCopyButton, 2200);
+    }
+    function failed() {
+      field.focus();
+      field.select();
+      if (btn) btn.textContent = 'Press Ctrl+C';
+    }
+
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text)
-        .then(function () { showNotice('Challenge link copied — send it to a friend'); })
-        .catch(function () { showShareFallback(text); });
+      navigator.clipboard.writeText(field.value).then(done).catch(function () {
+        // Clipboard API is blocked on insecure origins; execCommand still works.
+        field.select();
+        try { document.execCommand('copy') ? done() : failed(); } catch (e) { failed(); }
+      });
       return;
     }
-    showShareFallback(text);
-  }
-
-  function showShareFallback(text) {
-    const box = document.getElementById('shareFallback');
-    const area = document.getElementById('shareText');
-    if (!box || !area) { showNotice('Copy failed'); return; }
-    area.value = text;
-    box.classList.add('on');
-    area.focus();
-    area.select();
+    field.select();
+    try { document.execCommand('copy') ? done() : failed(); } catch (e) { failed(); }
   }
 
   /* A link puts the sender's puzzle and time into the recipient's app. */
