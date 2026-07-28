@@ -19,7 +19,7 @@
   // the frequency gate, the common-word backfill pass, and cleanDefinition's
   // truncation/proper-noun rules all changed, so any earlier cached bank needs
   // replacing rather than kept around.
-  const CACHE_KEY = 'mini-wordbank-v10';
+  const CACHE_KEY = 'mini-wordbank-v11';
   const CACHE_DAYS = 30;
   const TIMEOUT_MS = 10000;
   const CONCURRENCY = 6;
@@ -131,7 +131,29 @@
     'gook', 'homo', 'jizz', 'kike', 'nigga', 'orgy', 'penis', 'piss', 'poop',
     'porn', 'prick', 'pube', 'pubes', 'pussy', 'queer', 'rape', 'raped',
     'shit', 'slut', 'sperm', 'spic', 'tits', 'turd', 'twat', 'vulva', 'wank',
-    'whore'
+    'whore',
+
+    // Pure grammatical connectives — pronouns, conjunctions, articles, and
+    // auxiliary verb forms with no independent noun/verb/adjective sense to
+    // clue at all. Datamuse's raw corpus frequency ranks these at the very
+    // top (checked live: 66 of the top 300 words by frequency were exactly
+    // this category — THAT, THERE, WHO, THAN, THUS...), which meant the
+    // "common word" bias that's supposed to make Easy/Very Easy approachable
+    // was actually surfacing the least crossword-like fill in the whole bank.
+    // "Not this" is the best clue THAT will ever get; it isn't a thing, so it
+    // doesn't belong in the grid regardless of how it's clued. Kept deliberately
+    // narrow: ordinary words that are ALSO common function words but carry a
+    // real standalone sense (HAVE→possess, SET→collection, EVEN→level, WELL→
+    // water source, OVER→finished) are not here and shouldn't be — the line is
+    // "has a nameable meaning of its own," not "sometimes used as a connective."
+    // HAS/HAD deliberately not here, despite being auxiliary verbs most of the
+    // time — "possessed" is a real, standalone sense (same reasoning as HAVE),
+    // and HAS already had a curated clue before this list existed.
+    'and', 'but', 'nor', 'the', 'are', 'was', 'not', 'our',
+    'him', 'her', 'its', 'who', 'how', 'why',
+    'that', 'this', 'what', 'when', 'with', 'from', 'into', 'onto', 'upon',
+    'than', 'thus', 'were', 'been', 'them',
+    'their', 'these', 'those', 'where', 'which', 'while'
   ]);
 
   /* ---------- definition -> clue ---------- */

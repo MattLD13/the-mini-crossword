@@ -20,7 +20,6 @@ APE|Gorilla, e.g.|Mimic
 APP|Phone download
 APT|Fitting
 ARC|Rainbow shape
-ARE|"How ___ you?"
 ARK|Noah's vessel
 ARM|Limb with a hand
 ART|Museum display
@@ -153,12 +152,11 @@ GUM|Chew, chew, chew
 GUY|Fellow
 GYM|Workout spot
 HAM|Deli meat|Show-off
-HAS|Owns
+HAS|Owns|Possesses
 HAT|Head topper
 HAY|Barn bale
 HEM|Skirt edge
 HEN|Egg layer
-HER|Not him
 HEX|Curse
 HEY|"Yo!"
 HID|Concealed
@@ -168,7 +166,6 @@ HOE|Garden tool
 HOG|Pig
 HOP|Bunny's move
 HOT|Like chili peppers
-HOW|"___ are you?"
 HUB|Center of activity
 HUE|Color
 HUG|Warm embrace
@@ -239,8 +236,6 @@ NET|Tennis divider
 NEW|Fresh
 NIL|Zero, in soccer
 NOD|Yes gesture
-NOR|Neither's partner
-NOT|Negative word
 NOW|At this moment
 NUN|Convent resident
 NUT|Squirrel's snack
@@ -258,7 +253,6 @@ ONE|The loneliest number
 OPT|Choose
 ORB|Sphere
 ORE|Mined rock
-OUR|Belonging to us
 OUT|Not in
 OWE|Be in debt
 OWL|Hooting bird
@@ -356,7 +350,6 @@ TAX|April payment
 TEA|Earl Grey, e.g.
 TEE|Golf peg|Shirt type
 TEN|Perfect score
-THE|Most common word
 TIC|Nervous twitch
 TIE|Necktie|Even score
 TIN|Cookie container
@@ -386,15 +379,12 @@ VIE|Compete
 VOW|Wedding promise
 WAG|Move, as a tail
 WAR|Conflict
-WAS|Used to be
 WAX|Candle material
 WAY|Route
 WEB|Spider's creation
 WED|Marry
 WEE|Tiny
 WET|Soaked
-WHO|"___ Let the Dogs Out"
-WHY|Reason question
 WIG|Hairpiece
 WIN|Take first place
 WIT|Clever humor

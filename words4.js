@@ -46,7 +46,6 @@ BEAN|Coffee unit
 BEAR|Woods bruin|Endure
 BEAT|Rhythm|Defeat
 BEEF|Burger meat|Grievance
-BEEN|Existed
 BEER|Pint's contents
 BELL|Ringer
 BELT|Waist accessory
@@ -302,7 +301,6 @@ FOWL|Chickens and ducks
 FREE|No charge
 FRET|Worry|Guitar part
 FROG|Lily pad sitter
-FROM|Sender's word
 FUEL|Gas
 FULL|Not hungry anymore
 FUME|Be furious
@@ -422,7 +420,6 @@ IDEA|Brainstorm result
 IDLE|Not in use
 IDOL|Object of worship
 INCH|12th of a foot
-INTO|Fond of
 IRIS|Eye part|Purple flower
 IRON|Golf club|Wrinkle remover
 ITEM|List entry
@@ -613,7 +610,6 @@ OMEN|Sign of things to come
 OMIT|Leave out
 ONCE|Upon a time?
 ONLY|Solely
-ONTO|Aware of
 ONYX|Black gemstone
 OOZE|Seep
 OPAL|Iridescent gem
@@ -909,14 +905,10 @@ TENT|Camper's shelter
 TERM|Semester|Word
 TEST|Exam
 TEXT|Message
-THAN|Comparison word
-THAT|Not this
 THAW|Melt
-THEM|Those people
 THEN|Next
 THEY|Those folks
 THIN|Slender
-THIS|Not that
 TIDE|Ocean's rise and fall
 TIDY|Neat
 TILE|Bathroom square
@@ -960,7 +952,6 @@ UGLY|Not pretty
 UNDO|Reverse
 UNIT|Single item
 UNTO|Toward
-UPON|On top of
 URGE|Strong desire
 USED|Secondhand
 USER|App customer
@@ -1011,11 +1002,8 @@ WELD|Fuse metal
 WELL|Water source|Healthy
 WENT|Departed
 WEPT|Cried
-WERE|Used to be, plurally
 WEST|Sunset direction
 WHAM|Impact sound
-WHAT|"Come again?"
-WHEN|At what time
 WHIM|Sudden urge
 WHIP|Cream action
 WHIZ|Expert
@@ -1032,7 +1020,6 @@ WIPE|Clean off
 WIRE|Cable
 WISE|Sagacious
 WISH|Birthday candle thought
-WITH|Alongside
 WOKE|Awakened
 WOLF|Howling canine
 WOOD|Lumber

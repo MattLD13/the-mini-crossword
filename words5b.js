@@ -425,17 +425,14 @@ TENSE|On edge|Past or present
 TENTH|Decimal place
 THANK|Express gratitude
 THEFT|Robbery
-THEIR|Belonging to them
 THEME|Central idea
 THERE|Not here
-THESE|Not those
 THICK|Not thin
 THIEF|Robber
 THIGH|Leg part
 THINK|Use your head
 THIRD|Bronze medal place
 THORN|Rose's prickle
-THOSE|Not these
 THREE|Trio
 THROB|Pulse painfully
 THROW|Pitch
@@ -533,9 +530,6 @@ WEIRD|Strange
 WHALE|Ocean giant
 WHEAT|Bread grain
 WHEEL|Car part
-WHERE|Location question
-WHICH|Selection question
-WHILE|During
 WHIRL|Spin
 WHISK|Egg beater
 WHITE|Snow's color
