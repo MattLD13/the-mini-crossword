@@ -1085,11 +1085,16 @@
       paintTimer();
     }
 
+    // The alternate clue is shown only in the toast — the clue box and clue
+    // list keep showing the original. Mutating entry.clue here used to also
+    // rebuild and re-render the clue list, which raced against whatever the
+    // player was doing next (typing, tabbing to another clue, a fetch from a
+    // second hint click) and produced exactly the "sometimes old, sometimes
+    // new, sometimes neither" inconsistency this was rewritten to fix. This
+    // also makes "Different clue" behave the same as "Vowel pattern": an
+    // informational toast, not a lasting change to the puzzle.
     function applyAltClue(alt) {
       charge(5);
-      entry.clue = alt;
-      buildClues();
-      render();
       showNotice(num + ': ' + alt + ' [+5s]', 11000);
     }
 
@@ -1110,7 +1115,13 @@
     }
 
     if (scope === 'clue') {
+      // Guards the instant path too, not just the network one below — a
+      // rapid double click (or a double-tap on mobile) used to charge twice
+      // for one hint whenever a local alternate was found, since nothing
+      // stopped a second synchronous click from running before the first
+      // had returned.
       if (hintFlight.has(entry.id)) return;
+      hintFlight.add(entry.id);
       const priorClue = normalizeClue(entry.clue);
 
       // Curated overrides and the word bank's own multi-definition entries
@@ -1120,6 +1131,7 @@
       });
       if (localAlts.length) {
         applyAltClue(localAlts[Math.floor(Math.random() * localAlts.length)]);
+        hintFlight.delete(entry.id);
         return;
       }
 
@@ -1128,7 +1140,6 @@
       // other dictionary senses live, same as the boot-time harvest does in
       // bulk, filtered through the same cleanDefinition rules.
       const puzzleAtRequest = state.puzzle;
-      hintFlight.add(entry.id);
       showNotice(num + ': checking for another clue…', 4000);
       WordSource.fetchAltClues(answer).then(function (defs) {
         hintFlight.delete(entry.id);

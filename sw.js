@@ -23,24 +23,24 @@
    CACHE_VERSION alone was bumped. */
 'use strict';
 
-const CACHE_VERSION = 'mini-v12';
+const CACHE_VERSION = 'mini-v14';
 
 // Query strings are part of the cache key, so these must match the URLs in
 // index.html exactly (including ?v=), or every asset is fetched twice.
 const SHELL = [
   './',
   './index.html',
-  './styles.css?v=4',
-  './words.js?v=4',
-  './words4.js?v=4',
-  './words5a.js?v=4',
-  './words5b.js?v=4',
-  './clues.js?v=4',
-  './generator.js?v=4',
-  './wordsource.js?v=4',
-  './share.js?v=4',
-  './versus.js?v=4',
-  './game.js?v=4',
+  './styles.css?v=6',
+  './words.js?v=6',
+  './words4.js?v=6',
+  './words5a.js?v=6',
+  './words5b.js?v=6',
+  './clues.js?v=6',
+  './generator.js?v=6',
+  './wordsource.js?v=6',
+  './share.js?v=6',
+  './versus.js?v=6',
+  './game.js?v=6',
   './manifest.webmanifest',
   './icon.svg'
 ];
