@@ -90,7 +90,7 @@ html, body {
 .loader-grid {
   display: grid;
   grid-template-columns: repeat(2, 40px);
-  grid-template-rows: repeat(2, 40px);
+  grid-template-rows: repeat(3, 40px);
   gap: 4px;
   background: var(--grid-line);
   padding: 4px;
