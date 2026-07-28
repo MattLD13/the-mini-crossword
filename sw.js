@@ -10,27 +10,37 @@
      navigation — falls back to the cached index.html when offline
 
    Bump CACHE_VERSION whenever shell assets change, or clients keep the old
-   copy until their cache is evicted. */
+   copy until their cache is evicted.
+
+   CACHE_VERSION alone is not enough: bumping it only forces *this* service
+   worker to refetch. The ?v= on each URL below is what forces the browser's
+   own HTTP cache — and the hosting CDN in front of it — to treat the file as
+   new, which matters for every visitor, not just ones with this SW already
+   installed. Bump both together whenever game.js/wordsource.js/etc. change,
+   in index.html's <script> tags and in the SHELL list here — they were left
+   at ?v=3 across four straight commits that changed game.js and wordsource.js,
+   so returning visitors kept the pre-fix code no matter how many times
+   CACHE_VERSION alone was bumped. */
 'use strict';
 
-const CACHE_VERSION = 'mini-v11';
+const CACHE_VERSION = 'mini-v12';
 
 // Query strings are part of the cache key, so these must match the URLs in
 // index.html exactly (including ?v=), or every asset is fetched twice.
 const SHELL = [
   './',
   './index.html',
-  './styles.css?v=3',
-  './words.js?v=3',
-  './words4.js?v=3',
-  './words5a.js?v=3',
-  './words5b.js?v=3',
-  './clues.js?v=3',
-  './generator.js?v=3',
-  './wordsource.js?v=3',
-  './share.js?v=3',
-  './versus.js?v=3',
-  './game.js?v=3',
+  './styles.css?v=4',
+  './words.js?v=4',
+  './words4.js?v=4',
+  './words5a.js?v=4',
+  './words5b.js?v=4',
+  './clues.js?v=4',
+  './generator.js?v=4',
+  './wordsource.js?v=4',
+  './share.js?v=4',
+  './versus.js?v=4',
+  './game.js?v=4',
   './manifest.webmanifest',
   './icon.svg'
 ];
