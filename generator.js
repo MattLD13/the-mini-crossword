@@ -419,6 +419,7 @@
   global.MiniGenerator = {
     generate: generate,
     fromGrid: fromGrid,
+    cluesFor: function (word) { return cluesFor(String(word).toUpperCase()).slice(); },
     setClueOverrides: function (map) {
       clueOverrides = Object.create(null);
       Object.keys(map || {}).forEach(function (word) {

@@ -26,6 +26,8 @@
   --shadow-md: 0 8px 24px rgba(0,0,0,0.12);
   --shadow-lg: 0 12px 40px rgba(0,0,0,0.20);
   --tint: rgba(0,0,0,0.06);
+  --accent-blue: #1a5fd0;
+  --accent-blue-soft: rgba(26,95,208,0.10);
   --font: "Libre Franklin", "Franklin Gothic Medium", "Helvetica Neue", Helvetica, Arial, sans-serif;
 }
 
@@ -59,6 +61,8 @@
   --shadow-md: 0 8px 24px rgba(0,0,0,0.50);
   --shadow-lg: 0 12px 40px rgba(0,0,0,0.60);
   --tint: rgba(255,255,255,0.07);
+  --accent-blue: #58a6ff;
+  --accent-blue-soft: rgba(88,166,255,0.14);
 }
 
 * { box-sizing: border-box; }
@@ -215,8 +219,8 @@ html, body {
   display: block;
   font-family: var(--font);
   font-size: 12px;
-  font-weight: 500;
-  color: var(--subtle);
+  font-weight: 600;
+  color: var(--accent-blue);
   margin-top: 2px;
   padding: 0;
   border: none;
@@ -224,7 +228,7 @@ html, body {
   text-align: left;
   cursor: pointer;
 }
-.brand-date:hover { color: var(--ink); text-decoration: underline; }
+.brand-date:hover { text-decoration: underline; }
 
 .brand-note {
   font-size: 10.5px;
@@ -308,26 +312,7 @@ html, body {
 .challenge-banner.on { display: block; }
 [data-theme="dark"] .challenge-banner { color: var(--ink); }
 
-/* ---------------- archive & share ---------------- */
-.archive-field {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  margin: 16px 0 4px;
-  font-size: 13px;
-  font-weight: 600;
-}
-.archive-field input {
-  font-family: var(--font);
-  font-size: 14px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  border: 1px solid var(--button-border);
-  background: var(--button-bg);
-  color: var(--ink);
-}
-
+/* ---------------- share ---------------- */
 .share-text {
   width: 100%;
   margin: 14px 0 4px;
@@ -346,6 +331,94 @@ html, body {
   margin: 4px 0;
   background: var(--menu-border);
 }
+
+/* ---------------- archive calendar ---------------- */
+.archive-card { max-width: 430px; width: 100%; text-align: left; }
+
+.cal-dows {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  margin: 12px 0 6px;
+}
+.cal-dows span {
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.5px;
+}
+
+.cal-scroll {
+  max-height: 44vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;   /* don't scroll the page at the ends */
+  padding-right: 4px;
+}
+
+.cal-month + .cal-month { margin-top: 14px; }
+
+/* Sticks so you always know which month you are scrolled into. */
+.cal-month h3 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  margin: 0 0 6px;
+  padding: 4px 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: var(--subtle);
+  background: var(--modal-bg);
+}
+
+.cal-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+}
+
+.cal-day {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink);
+  background: var(--button-bg);
+  border: 1px solid var(--button-border);
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+}
+.cal-day:hover:not(:disabled) { background: var(--button-hover); }
+.cal-day.blank { border: none; background: none; cursor: default; }
+.cal-day:disabled { opacity: 0.25; cursor: default; }
+
+/* A day you have already solved: its time is the point, so it carries the
+   accent colour and the day number steps back. */
+.cal-day.done {
+  border-color: var(--accent-blue);
+  background: var(--accent-blue-soft);
+}
+.cal-day.done .cal-num { font-size: 10px; color: var(--subtle); font-weight: 500; }
+.cal-day .cal-time {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: var(--accent-blue);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.cal-day.today { outline: 2px solid var(--yellow); outline-offset: -1px; }
+
+/* Timer turns blue once the puzzle is finished. */
+.timer.done { color: var(--accent-blue); font-weight: 700; }
 
 .caret {
   width: 0; height: 0;

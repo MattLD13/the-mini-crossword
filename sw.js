@@ -13,7 +13,7 @@
    copy until their cache is evicted. */
 'use strict';
 
-const CACHE_VERSION = 'mini-v4';
+const CACHE_VERSION = 'mini-v5';
 
 // Query strings are part of the cache key, so these must match the URLs in
 // index.html exactly (including ?v=), or every asset is fetched twice.

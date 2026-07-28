@@ -106,8 +106,9 @@
     <div class="menu" data-menu>
       <button class="tool-btn" data-menu-btn id="hintMenuBtn">Hint<span class="caret"></span></button>
       <div class="menu-list" id="hintMenuList">
-        <button data-action="hint-clue">Clue Tip (+5s)</button>
-        <button data-action="hint-vowels">Vowel Count (+5s)</button>
+        <button data-action="hint-clue">Another angle (+10s)</button>
+        <button data-action="hint-pattern">Vowel pattern (+10s)</button>
+        <button data-action="hint-letter">Next letter (+15s)</button>
       </div>
     </div>
 
@@ -132,6 +133,7 @@
       </div>
     </div>
 
+    <button class="tool-btn" id="shareBtn" data-action="share">Share</button>
     <button class="tool-btn" id="versusBtn">Versus</button>
     <button class="tool-btn solid" id="newBtn">New Puzzle</button>
   </div>
@@ -311,18 +313,19 @@
 </div>
 
 <div class="modal-backdrop" id="archiveModal">
-  <div class="modal-card">
-    <h2>Puzzle archive</h2>
-    <p class="vs-hint">Every past day has its own puzzle. Pick a date to play it at your current difficulty.</p>
-    <label class="archive-field">
-      <span>Date</span>
-      <input type="date" id="archiveDate">
-    </label>
+  <div class="modal-card archive-card">
+    <div class="stats-header">
+      <h2>Puzzle archive</h2>
+      <button class="modal-close-icon" id="archiveClose">&times;</button>
+    </div>
+    <p class="vs-hint" id="archiveHint">Pick any day to play it at your current difficulty. Days you have solved show your time — tap one to beat it.</p>
+    <div class="cal-dows" aria-hidden="true">
+      <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+    </div>
+    <div class="cal-scroll" id="calScroll"></div>
     <div class="modal-actions">
-      <button class="btn-primary" id="archivePlay">Play that day</button>
-      <button class="btn-ghost" id="archiveRandom">Surprise me</button>
       <button class="btn-ghost" id="archiveToday">Today</button>
-      <button class="btn-ghost" id="archiveClose">Cancel</button>
+      <button class="btn-ghost" id="archiveRandom">Surprise me</button>
     </div>
   </div>
 </div>

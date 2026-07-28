@@ -157,9 +157,12 @@
     return puzzle;
   }
 
+  /* UTC, to match the daily seed, the history keys and the archive calendar —
+     otherwise a player behind UTC sees the calendar mark one day as today
+     while the header names the day before. */
   function todayLabel() {
     return new Date().toLocaleDateString(undefined, {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
     });
   }
 
@@ -874,19 +877,28 @@
       return;
     }
     if (state.challenge) {
-      // Playing someone else's link: the headline is the head-to-head result.
+      // Racing a link, or your own previous time on an archive day.
       const delta = state.challenge.seconds - state.seconds;
       const won = delta > 0;
+      const self = !!state.challenge.self;
       el.modalMark.textContent = won ? '🏆' : '⏱';
       el.modalMark.style.color = won ? '#f5c518' : '#888';
       el.modalTitle.textContent = won
-        ? 'You beat ' + state.challenge.name + '!'
-        : 'So close';
-      el.modalBody.textContent = won
-        ? 'You solved it in ' + formatTime(state.seconds) + ' — ' +
-          formatTime(delta) + ' faster than ' + state.challenge.name + '.'
-        : state.challenge.name + ' finished in ' + formatTime(state.challenge.seconds) +
-          '; you took ' + formatTime(state.seconds) + '.';
+        ? (self ? 'New personal best!' : 'You beat ' + state.challenge.name + '!')
+        : (self ? 'Your record stands' : 'So close');
+      if (self) {
+        el.modalBody.textContent = won
+          ? formatTime(state.seconds) + ' — ' + formatTime(delta) + ' faster than your old ' +
+            formatTime(state.challenge.seconds) + '.'
+          : 'You took ' + formatTime(state.seconds) + '; your best on this day is still ' +
+            formatTime(state.challenge.seconds) + '.';
+      } else {
+        el.modalBody.textContent = won
+          ? 'You solved it in ' + formatTime(state.seconds) + ' — ' +
+            formatTime(delta) + ' faster than ' + state.challenge.name + '.'
+          : state.challenge.name + ' finished in ' + formatTime(state.challenge.seconds) +
+            '; you took ' + formatTime(state.seconds) + '.';
+      }
     } else if (state.usedHelp) {
       el.modalMark.textContent = '✓';
       el.modalMark.style.color = '#2ca02c';
@@ -931,6 +943,8 @@
 
   function paintTimer() {
     el.timerText.textContent = formatTime(state.seconds);
+    // A finished time reads as a result, not a running clock.
+    el.timerBtn.classList.toggle('done', !!state.solved);
     el.timerIcon.style.display = state.solved ? 'none' : '';
     el.timerIcon.innerHTML = state.running
       ? '<rect x="1" y="1" width="3.4" height="12" fill="currentColor"></rect><rect x="7.6" y="1" width="3.4" height="12" fill="currentColor"></rect>'
@@ -949,8 +963,9 @@
       if (btnReveal) btnReveal.innerHTML = 'Reveal (' + (race.reveals || 0) + ')<span class="caret"></span>';
       if (hintList) {
         hintList.innerHTML =
-          '<button data-action="hint-clue">Clue Tip (+5s)</button>' +
-          '<button data-action="hint-vowels">Vowel Count (+5s)</button>';
+          '<button data-action="hint-clue">Another angle (+10s)</button>' +
+          '<button data-action="hint-pattern">Vowel pattern (+10s)</button>' +
+          '<button data-action="hint-letter">Next letter (+15s)</button>';
       }
       if (revealList) {
         revealList.innerHTML =
@@ -963,8 +978,9 @@
       if (btnReveal) btnReveal.innerHTML = 'Reveal<span class="caret"></span>';
       if (hintList) {
         hintList.innerHTML =
-          '<button data-action="hint-clue">Clue Tip (+5s)</button>' +
-          '<button data-action="hint-vowels">Vowel Count (+5s)</button>';
+          '<button data-action="hint-clue">Another angle (+10s)</button>' +
+          '<button data-action="hint-pattern">Vowel pattern (+10s)</button>' +
+          '<button data-action="hint-letter">Next letter (+15s)</button>';
       }
       if (revealList) {
         revealList.innerHTML =
@@ -1056,18 +1072,58 @@
     const answer = entry.answer;
     const num = entry.num + (entry.dir === 'across' ? 'A' : 'D');
 
-    pushHistory();
-    state.usedHelp = true;
-    state.seconds += 5;
-    paintTimer();
+    /* The old hints told you the answer's length — which the grid already
+       shows — and the vowel count twice over. These three each say something
+       you cannot read off the board, and none is charged unless it fires. */
+    function charge(seconds) {
+      pushHistory();
+      state.usedHelp = true;
+      state.seconds += seconds;
+      paintTimer();
+    }
 
     if (scope === 'clue') {
-      const vowels = (answer.match(/[AEIOU]/gi) || []).length;
-      const firstLetter = answer[0];
-      showNotice(num + ' Hint: ' + answer.length + ' letters, starts with "' + firstLetter + '" (' + vowels + ' vowel' + (vowels === 1 ? '' : 's') + ') [+5s]');
-    } else if (scope === 'vowels') {
-      const vowels = (answer.match(/[AEIOU]/gi) || []).length;
-      showNotice(num + ' contains ' + vowels + ' vowel' + (vowels === 1 ? '' : 's') + '. [+5s]');
+      const alts = (MiniGenerator.cluesFor(answer) || []).filter(function (c) {
+        return c && c !== entry.clue;
+      });
+      charge(10);
+      if (alts.length) {
+        const alt = alts[Math.floor(Math.random() * alts.length)];
+        // Keep the reworded clue on the board, not just in a toast that expires.
+        entry.clue = alt;
+        buildClues();
+        render();
+        showNotice(num + ' reworded: ' + alt + ' [+10s]', 11000);
+      } else {
+        // Only about a fifth of answers carry a second clue, so this hint would
+        // otherwise be dead most of the time. Naming the opening letter is the
+        // same kind of nudge — it points at the answer without placing it, and
+        // unlike "Next letter" it leaves the square yours to fill.
+        showNotice(num + ' starts with "' + answer.charAt(0) + '" [+10s]', 11000);
+      }
+      return;
+    }
+
+    if (scope === 'pattern') {
+      charge(10);
+      const pattern = answer.split('').map(function (ch) {
+        return 'AEIOU'.indexOf(ch) === -1 ? 'C' : 'V';
+      }).join(' ');
+      showNotice(num + ' pattern: ' + pattern + '   (V = vowel, C = consonant) [+10s]', 11000);
+      return;
+    }
+
+    if (scope === 'letter') {
+      const target = entry.cells.find(function (cell) {
+        return !state.entries[cell.r][cell.c];
+      });
+      if (!target) { showNotice(num + ' is already filled — check it instead.'); return; }
+      charge(15);
+      const position = entry.cells.indexOf(target) + 1;
+      setLetter(target.r, target.c, state.puzzle.solution[target.r][target.c]);
+      state.marks[target.r][target.c].revealed = true;
+      showNotice(num + ': letter ' + position + ' filled in [+15s]');
+      if (!checkSolved()) { moveTo(target); }
     }
   }
 
@@ -1083,6 +1139,12 @@
     const action = e.target.closest('[data-action]');
     if (!action) return;
     const [verb, scope] = action.dataset.action.split('-');
+
+    if (verb === 'share') {
+      shareResult();
+      document.querySelectorAll('.menu').forEach(function (m) { m.classList.remove('open'); });
+      return;
+    }
 
     // Solving-mode toggles; available in a race too.
     if (verb === 'pencil' || verb === 'autocheck') {
@@ -1148,13 +1210,15 @@
   // The date line doubles as the archive entry point (no extra toolbar button).
   if (el.date) el.date.addEventListener('click', openArchive);
 
-  const archivePlay = document.getElementById('archivePlay');
-  if (archivePlay) {
-    archivePlay.addEventListener('click', function () {
-      const input = document.getElementById('archiveDate');
-      playArchive(input ? input.value : '');
+  const calScroll = document.getElementById('calScroll');
+  if (calScroll) {
+    calScroll.addEventListener('click', function (e) {
+      const day = e.target.closest('.cal-day[data-date]');
+      if (!day || day.disabled) return;
+      playArchive(day.dataset.date);
     });
   }
+
   const archiveToday = document.getElementById('archiveToday');
   if (archiveToday) {
     archiveToday.addEventListener('click', function () { playArchive(todayISO()); });
@@ -1413,6 +1477,10 @@
     if (elStreak) elStreak.textContent = String(p && p.streak || 0);
   }
 
+  /* A solve is filed against the day it belongs to, not the day it happened.
+     Replaying 14 March from the archive must not count as today's daily, or
+     the streak could be farmed from easy old puzzles — and the calendar needs
+     each day's own best time to offer "beat it". */
   function recordSolve() {
     let p = loadProfile() || defaultProfile();
     const today = new Date().toISOString().split('T')[0];
@@ -1421,11 +1489,18 @@
     const yesterday = dYesterday.toISOString().split('T')[0];
     const diff = currentDifficulty();
 
+    const kind = state.kind;
+    const puzzleDate = state.archiveDate || today;
+    // Only the real daily moves the streak and the global board. Archive
+    // replays, shared challenges and practice puzzles are personal records.
+    const countsAsDaily = kind === 'daily';
+    const recordable = kind === 'daily' || kind === 'archive';
+
     p.played = (p.played || 0) + 1;
     p.solved = (p.solved || 0) + 1;
 
     // Daily streak logic (increments once per day)
-    if (p.lastSolvedDate !== today) {
+    if (countsAsDaily && p.lastSolvedDate !== today) {
       if (p.lastSolvedDate === yesterday) {
         p.streak = (p.streak || 0) + 1;
       } else {
@@ -1437,31 +1512,38 @@
       p.lastSolvedDate = today;
     }
 
-    // Per-difficulty leaderboard recording for today
-    p.history = p.history || [];
-    const existingIdx = p.history.findIndex(function (h) {
-      return h.date === today && (h.difficulty || 'medium') === diff;
-    });
+    // Per-date, per-difficulty personal record — this is what the calendar reads.
+    if (recordable) {
+      p.history = p.history || [];
+      const existingIdx = p.history.findIndex(function (h) {
+        return h.date === puzzleDate && (h.difficulty || 'medium') === diff;
+      });
 
-    const newEntry = {
-      date: today,
-      seconds: state.seconds,
-      difficulty: diff,
-      usedHelp: !!state.usedHelp,
-      label: state.label || 'The Mini'
-    };
+      const newEntry = {
+        date: puzzleDate,
+        seconds: state.seconds,
+        difficulty: diff,
+        usedHelp: !!state.usedHelp,
+        label: state.label || 'The Mini'
+      };
 
-    if (existingIdx !== -1) {
-      // Keep best time for this difficulty today
-      if (state.seconds < p.history[existingIdx].seconds) {
-        p.history[existingIdx] = newEntry;
+      if (existingIdx !== -1) {
+        const prev = p.history[existingIdx];
+        // Keep the best time for that day, but never let a forfeit stand in
+        // for a real solve.
+        if (prev.forfeited || !prev.seconds || state.seconds < prev.seconds) {
+          p.history[existingIdx] = newEntry;
+        }
+      } else {
+        p.history.unshift(newEntry);
       }
-    } else {
-      p.history.unshift(newEntry);
-    }
 
-    if (p.history.length > 50) p.history.pop();
+      // Roomy enough to hold a long archive run; still trivial in localStorage.
+      if (p.history.length > 400) p.history.pop();
+    }
     saveProfile(p);
+
+    if (!countsAsDaily) return;
 
     // Sync score to global cross-device server
     try {
@@ -1791,10 +1873,82 @@
 
   const ARCHIVE_START = '2024-01-01';   // nothing meaningful predates the app
 
+  /* date -> best seconds, for the current difficulty only. Forfeits and
+     unfinished entries are not times, so they are skipped. */
+  function solvedTimes() {
+    const p = loadProfile() || defaultProfile();
+    const diff = currentDifficulty();
+    const map = Object.create(null);
+    (p.history || []).forEach(function (h) {
+      if ((h.difficulty || 'medium') !== diff) return;
+      if (h.forfeited || !h.seconds) return;
+      if (map[h.date] === undefined || h.seconds < map[h.date]) map[h.date] = h.seconds;
+    });
+    return map;
+  }
+
+  const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'];
+
+  function renderMonth(year, month, done, today) {
+    const first = new Date(Date.UTC(year, month, 1));
+    const lead = first.getUTCDay();
+    const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+
+    let html = '<section class="cal-month"><h3>' + MONTH_NAMES[month] + ' ' + year +
+      '</h3><div class="cal-grid">';
+    for (let i = 0; i < lead; i++) html += '<span class="cal-day blank"></span>';
+
+    for (let day = 1; day <= days; day++) {
+      const iso = year + '-' + String(month + 1).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+      const future = iso > today;
+      const time = done[iso];
+      const classes = ['cal-day'];
+      if (time !== undefined) classes.push('done');
+      if (iso === today) classes.push('today');
+
+      const label = iso === today ? 'Today' : iso;
+      html += '<button class="' + classes.join(' ') + '" data-date="' + iso + '"' +
+        (future ? ' disabled' : '') +
+        ' aria-label="' + label + (time !== undefined ? ', solved in ' + formatTime(time) : '') + '">' +
+        '<span class="cal-num">' + day + '</span>' +
+        (time !== undefined ? '<span class="cal-time">' + formatTime(time) + '</span>' : '') +
+        '</button>';
+    }
+    return html + '</div></section>';
+  }
+
+  function buildCalendar() {
+    const scroll = document.getElementById('calScroll');
+    if (!scroll) return;
+    const done = solvedTimes();
+    const today = todayISO();
+    const start = dateFromISO(ARCHIVE_START);
+    const now = new Date();
+    const endY = now.getUTCFullYear(), endM = now.getUTCMonth();
+
+    let y = start.getUTCFullYear(), m = start.getUTCMonth();
+    let html = '';
+    while (y < endY || (y === endY && m <= endM)) {
+      html += renderMonth(y, m, done, today);
+      if (++m > 11) { m = 0; y++; }
+    }
+    scroll.innerHTML = html;
+
+    // Open on the current month rather than 2024.
+    const todayBtn = scroll.querySelector('.cal-day.today');
+    if (todayBtn) todayBtn.scrollIntoView({ block: 'center' });
+    else scroll.scrollTop = scroll.scrollHeight;
+  }
+
   function playArchive(iso) {
     const d = dateFromISO(iso);
     if (!d) { showNotice('Pick a valid date'); return; }
     if (iso > todayISO()) { showNotice('That day has not happened yet'); return; }
+
+    // Today is the live daily, not an archive replay — it still has to count
+    // toward the streak and the global board.
+    if (iso === todayISO()) { closeArchive(); newPuzzle(); return; }
 
     if (race.on) { Versus.leave(); endRace(); }
     const difficulty = currentDifficulty();
@@ -1813,6 +1967,11 @@
     const label = pretty + ' · ' + (DIFF_LABEL[difficulty] || 'Medium') + ' · archive';
     const next = blankState(puzzle, label, 'archive');
     next.archiveDate = iso;
+
+    // Already solved this day? Then the point of replaying it is the time.
+    const best = solvedTimes()[iso];
+    if (best !== undefined) next.challenge = { name: 'your best', seconds: best, self: true };
+
     mount(next, label);
     save();
     closeArchive();
@@ -1821,12 +1980,7 @@
   function openArchive() {
     const modal = document.getElementById('archiveModal');
     if (!modal) return;
-    const input = document.getElementById('archiveDate');
-    if (input) {
-      input.max = todayISO();
-      input.min = ARCHIVE_START;
-      if (!input.value) input.value = state && state.archiveDate ? state.archiveDate : todayISO();
-    }
+    buildCalendar();
     modal.classList.add('on');
   }
 
@@ -1918,8 +2072,10 @@
     if (!banner) return;
     if (!state || !state.challenge) { banner.classList.remove('on'); return; }
     banner.classList.add('on');
-    banner.textContent = state.challenge.name + ' solved this in ' +
-      MiniShare.formatTime(state.challenge.seconds) + ' — beat it.';
+    banner.textContent = state.challenge.self
+      ? 'Your best on this puzzle: ' + MiniShare.formatTime(state.challenge.seconds) + ' — beat it.'
+      : state.challenge.name + ' solved this in ' +
+        MiniShare.formatTime(state.challenge.seconds) + ' — beat it.';
   }
 
   function isDailyCompleted(difficulty) {
