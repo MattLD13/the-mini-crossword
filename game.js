@@ -963,7 +963,7 @@
       if (btnReveal) btnReveal.innerHTML = 'Reveal (' + (race.reveals || 0) + ')<span class="caret"></span>';
       if (hintList) {
         hintList.innerHTML =
-          '<button data-action="hint-bookend">First &amp; last letter (+5s)</button>' +
+          '<button data-action="hint-clue">Different clue (+5s)</button>' +
           '<button data-action="hint-pattern">Vowel pattern (+10s)</button>' +
           '<button data-action="hint-letter">Next letter (+15s)</button>';
       }
@@ -978,7 +978,7 @@
       if (btnReveal) btnReveal.innerHTML = 'Reveal<span class="caret"></span>';
       if (hintList) {
         hintList.innerHTML =
-          '<button data-action="hint-bookend">First &amp; last letter (+5s)</button>' +
+          '<button data-action="hint-clue">Different clue (+5s)</button>' +
           '<button data-action="hint-pattern">Vowel pattern (+10s)</button>' +
           '<button data-action="hint-letter">Next letter (+15s)</button>';
       }
@@ -1063,6 +1063,10 @@
     if (document.hidden && state && state.running) pause();
   });
 
+  // Entry ids with a "Different clue" network lookup in flight, so a double
+  // click can't fire two fetches (and two charges) for the same clue.
+  const hintFlight = new Set();
+
   function giveHint(scope) {
     const entry = currentEntry();
     if (!entry) {
@@ -1081,12 +1085,62 @@
       paintTimer();
     }
 
-    if (scope === 'bookend') {
-      // Cheapest and always available — unlike a reworded clue, which needed a
-      // curated second clue to exist for that answer (~1 in 5 did).
+    function applyAltClue(alt) {
       charge(5);
-      showNotice(num + ' starts with "' + answer.charAt(0) +
-        '" and ends with "' + answer.charAt(answer.length - 1) + '" [+5s]', 11000);
+      entry.clue = alt;
+      buildClues();
+      render();
+      showNotice(num + ': ' + alt + ' [+5s]', 11000);
+    }
+
+    function bookendFallback() {
+      // Genuinely nothing else on file anywhere (curated, bank, or Datamuse) —
+      // this is the one case where the hint can't be a different clue, so say
+      // so plainly rather than pretend the shape hint is a clue.
+      charge(5);
+      showNotice(num + ' has no other clue on record — starts with "' + answer.charAt(0) +
+        '", ends with "' + answer.charAt(answer.length - 1) + '" [+5s]', 11000);
+    }
+
+    // "A safe place" vs "Safe place" is not a different clue — just the same
+    // dictionary sense with an article Datamuse happened to include. Compare
+    // with articles stripped so a near-duplicate doesn't count as an alternate.
+    function normalizeClue(c) {
+      return String(c || '').toLowerCase().replace(/^(a|an|the)\s+/, '').trim();
+    }
+
+    if (scope === 'clue') {
+      if (hintFlight.has(entry.id)) return;
+      const priorClue = normalizeClue(entry.clue);
+
+      // Curated overrides and the word bank's own multi-definition entries
+      // resolve instantly — most 3-letter crosswordese has these.
+      const localAlts = (MiniGenerator.cluesFor(answer) || []).filter(function (c) {
+        return c && normalizeClue(c) !== priorClue;
+      });
+      if (localAlts.length) {
+        applyAltClue(localAlts[Math.floor(Math.random() * localAlts.length)]);
+        return;
+      }
+
+      // No second sense on hand — most answers are in this boat (clues.js
+      // only hand-curates a few hundred words). Ask Datamuse for the word's
+      // other dictionary senses live, same as the boot-time harvest does in
+      // bulk, filtered through the same cleanDefinition rules.
+      const puzzleAtRequest = state.puzzle;
+      hintFlight.add(entry.id);
+      showNotice(num + ': checking for another clue…', 4000);
+      WordSource.fetchAltClues(answer).then(function (defs) {
+        hintFlight.delete(entry.id);
+        // The puzzle changed while we were waiting (New Puzzle, a challenge
+        // link, a race rematch) — applying this now would charge and edit a
+        // clue list nobody is looking at.
+        if (!state || state.puzzle !== puzzleAtRequest) return;
+
+        const fresh = defs.filter(function (d) { return normalizeClue(d) !== priorClue; });
+        if (fresh.length) applyAltClue(fresh[Math.floor(Math.random() * fresh.length)]);
+        else bookendFallback();
+      });
       return;
     }
 

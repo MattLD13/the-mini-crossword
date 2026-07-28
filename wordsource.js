@@ -13,7 +13,9 @@
 (function (global) {
   'use strict';
 
-  const CACHE_KEY = 'mini-wordbank-v3';
+  // Bumped so every existing install re-harvests through REJECT_EXPLICIT
+  // instead of keeping whatever it cached before that filter existed.
+  const CACHE_KEY = 'mini-wordbank-v4';
   const CACHE_DAYS = 30;
   const TIMEOUT_MS = 10000;
   const CONCURRENCY = 6;
@@ -54,6 +56,28 @@
     'a community in|a neighborhood|a ghost town|a township|a parish|' +
     'a settlement|a placename|in the united states', 'i');
 
+  // Wiktionary/dictionary sources carry every sense a spelling has, including
+  // crude slang senses of otherwise everyday words (e.g. one definition of
+  // "roger" is a vulgar verb). BLOCKED below only screens words that are
+  // themselves unfit as answers; this screens definition TEXT so an innocuous
+  // word doesn't surface an explicit secondary sense as a puzzle clue. Checked
+  // before the parenthetical-content strip, since dictionaries often tag these
+  // senses as "(vulgar)" / "(offensive)" rather than stating it plainly.
+  const REJECT_EXPLICIT = new RegExp(
+    'sexual intercourse|have sex\\b|to have sex|an act of sex|make love|' +
+    'masturbat|ejaculat|orgasm|copulat|fellatio|cunnilingus|erection|aroused|' +
+    '\\bpenis\\b|\\bvagina\\b|genitalia|testicle|scrotum|foreskin|' +
+    'a prostitute|act of oral sex|oral sex|anal sex|porn(?:ography)?\\b|' +
+    '\\(vulgar\\)|\\(coarse slang\\)|\\(offensive\\)|\\(derogatory\\)|\\(ethnic slur\\)|' +
+    'vulgar slang|derogatory term|offensive term|ethnic slur|racial slur|' +
+    'excrement|\\bfeces\\b|urinat|defecat|flatulen|orgy\\b|' +
+    // Generic insult/slur definitions ("a promiscuous woman", "term of abuse
+    // for...") — these don't name a body part or act, but they're the same
+    // category of thing: not fit to hand a player as a puzzle clue.
+    'term of (abuse|contempt|disparagement)|insulting term|slang insult|' +
+    'a promiscuous|loose morals|\\bslapper\\b|disparaging term',
+    'i');
+
   // A dictionary-derived list of common English words (no proper nouns), used to
   // gate the API results. Datamuse frequency counts every sense of a spelling,
   // so without this gate place names and foreign words score high enough to pass.
@@ -87,10 +111,10 @@
     let text = raw.replace(/^[a-z]+\t/, '').trim();   // drop the "n\t" part-of-speech tag
     const bracket = text.indexOf('[');                // Datamuse appends "[...]" cross-refs
     if (bracket !== -1) text = text.slice(0, bracket);
-    if (REJECT_DEF.test(text) || REJECT_ANYWHERE.test(text)) return null;
+    if (REJECT_DEF.test(text) || REJECT_ANYWHERE.test(text) || REJECT_EXPLICIT.test(text)) return null;
 
     text = text.replace(/\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim();
-    if (REJECT_DEF.test(text)) return null;
+    if (REJECT_DEF.test(text) || REJECT_EXPLICIT.test(text)) return null;
 
     // Keep only the first sense: "Unhappy; cheerless; miserable" -> "Unhappy".
     const semi = text.indexOf(';');
@@ -151,9 +175,9 @@
 
   /* ---------- fetching ---------- */
 
-  function fetchJSON(url) {
+  function fetchJSON(url, timeoutMs) {
     const controller = new AbortController();
-    const timer = setTimeout(function () { controller.abort(); }, TIMEOUT_MS);
+    const timer = setTimeout(function () { controller.abort(); }, timeoutMs || TIMEOUT_MS);
     return fetch(url, { signal: controller.signal })
       .then(function (res) {
         if (!res.ok) throw new Error('HTTP ' + res.status);
@@ -161,6 +185,32 @@
       })
       .then(function (json) { clearTimeout(timer); return json; },
             function (err) { clearTimeout(timer); throw err; });
+  }
+
+  /* ---------- single-word alternate definitions (for the in-game hint) ----------
+     The bundled bank gives most answers exactly one clue (see clues.js for why
+     hand-curating past a few hundred words doesn't scale), so "give me a
+     different clue" needs a live source for the other ~80%. Datamuse's plain
+     word lookup returns every sense it has on file — reusing cleanDefinition
+     means an on-demand definition is filtered by the same rules (no proper
+     nouns, no leaking the answer, etc.) as the bulk harvest at boot. */
+  const HINT_TIMEOUT_MS = 4000;                 // a hint should feel instant or fail fast
+
+  function fetchAltClues(word) {
+    const w = String(word || '').toLowerCase();
+    if (!/^[a-z]{3,5}$/.test(w)) return Promise.resolve([]);
+    return fetchJSON('https://api.datamuse.com/words?sp=' + w + '&md=d&max=1', HINT_TIMEOUT_MS)
+      .then(function (items) {
+        const hit = items && items[0];
+        if (!hit || hit.word !== w) return [];
+        const out = [];
+        (hit.defs || []).forEach(function (def) {
+          const clue = cleanDefinition(def, w);
+          if (clue && out.indexOf(clue) === -1) out.push(clue);
+        });
+        return out;
+      })
+      .catch(function () { return []; });
   }
 
   function runPool(tasks, limit) {
@@ -296,6 +346,11 @@
       });
     },
 
-    clearCache: function () { try { localStorage.removeItem(CACHE_KEY); } catch (e) {} }
+    clearCache: function () { try { localStorage.removeItem(CACHE_KEY); } catch (e) {} },
+
+    /* Best-effort list of alternate definitions for one answer, straight from
+       Datamuse. Resolves to [] (never rejects) on timeout, offline, or no hit —
+       callers decide what "no alternate available" means for them. */
+    fetchAltClues: fetchAltClues
   };
 })(window);
