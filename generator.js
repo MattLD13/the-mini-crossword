@@ -67,6 +67,41 @@
 
   const MIN_CANDIDATES = 60;
 
+  /* ---------- clue difficulty ----------
+     Clue arrays (curated in clues.js, or harvested from Datamuse) are written/
+     ordered easy-to-hard: index 0 is the plainest phrasing, the last index the
+     most oblique. CLUE_BIAS steers which end of that array a puzzle draws
+     from, weighted rather than absolute — 'impossible' used to always take
+     literally the last entry, which is exactly the "same clue every time"
+     problem this exists to fix, just at the hard end instead of the easy one.
+     A small amount of noise keeps every difficulty capable of landing
+     anywhere in the array; the bias just tilts the odds. */
+  // Kept below CLUE_NOISE's amplitude on purpose: at the most common array
+  // sizes (2-3 clues), a bias magnitude >= the noise amplitude guarantees the
+  // biased index wins every single time (checked: 1.1 produced literal 100/0
+  // at n=2 for hard/extreme/impossible) — which recreates the exact "always
+  // the same clue" complaint this exists to fix, just at the hard end instead
+  // of the easy one. These values were tuned by simulation (see the bias
+  // distribution check run during development) to skew hard without ever
+  // fully determinizing: n=2 impossible lands ~99/1, not 100/0.
+  const CLUE_BIAS = {
+    veryeasy: -0.85, easy: -0.42, medium: 0, hard: 0.42, extreme: 0.68, impossible: 0.9
+  };
+  const CLUE_NOISE = 1.0;
+
+  function pickClueByDifficulty(clueOptions, rnd, difficulty) {
+    const n = clueOptions.length;
+    if (n <= 1) return clueOptions[0];
+    const bias = CLUE_BIAS[difficulty] || 0;
+    let best = 0, bestKey = -Infinity;
+    for (let i = 0; i < n; i++) {
+      const pos = i / (n - 1);                    // 0 (easiest) .. 1 (hardest)
+      const key = pos * bias + rnd() * CLUE_NOISE;
+      if (key > bestKey) { bestKey = key; best = i; }
+    }
+    return clueOptions[best];
+  }
+
   function tierFor(bank, difficulty) {
     if (!bank.tiers) bank.tiers = Object.create(null);
     if (bank.tiers[difficulty]) return bank.tiers[difficulty];
@@ -319,13 +354,7 @@
 
       const entries = built.slots.map(function (slot, si) {
         const word = solution[si];
-        const options = cluesFor(word);
-        let pickedClue;
-        if (difficulty === 'impossible' && options.length > 1) {
-          pickedClue = options[options.length - 1];
-        } else {
-          pickedClue = options[Math.floor(rnd() * options.length)];
-        }
+        const pickedClue = pickClueByDifficulty(cluesFor(word), rnd, difficulty);
         return {
           id: slot.id,
           num: slot.num,

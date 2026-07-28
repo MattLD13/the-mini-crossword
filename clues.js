@@ -10,9 +10,13 @@
    be clued most blandly. Anything not listed here still falls back to the
    dictionary definition, so partial coverage degrades gracefully.
 
-   Format: ANSWER: [clue, clue, ...]. One is chosen at random per puzzle (the
-   Impossible difficulty deliberately takes the last, so put the most oblique
-   clue last). Keep them short — the clue bar is one line on mobile. */
+   Format: ANSWER: [clue, clue, ...], ordered EASIEST FIRST, HARDEST LAST.
+   generator.js's pickClueByDifficulty() weights which end of this array a
+   puzzle draws from — Very Easy draws from the front, Impossible from the
+   back, Medium roughly uniformly — so the ordering isn't just cosmetic. Put
+   a plain, direct definition first; save fill-in-the-blank, wordplay, and
+   indirect phrasing ("___ before the storm") for the end. Keep them short —
+   the clue bar is one line on mobile. */
 (function (global) {
   'use strict';
 
@@ -61,7 +65,7 @@
     OAR: ['Rowboat mover', 'Crew tool', 'Put your ___ in'],
     OWL: ['Night bird', 'Wise one, proverbially', 'Hooter'],
     PEN: ['Writing tool', 'Pig\'s home', 'Mightier than the sword'],
-    PIE: ['Easy as ___', 'Chart type', 'Bakery buy'],
+    PIE: ['Bakery buy', 'Chart type', 'Easy as ___'],
     RAT: ['Squealer', 'Lab animal', 'Smell a ___'],
     RUN: ['Jog', 'Stocking flaw', 'Baseball score'],
     SEA: ['Ocean', 'All at ___ (confused)', 'Dead or Red'],
@@ -112,7 +116,7 @@
     LINE: ['Queue', 'Drop me a ___', 'Fishing cord'],
     MOON: ['Night light', 'Over the ___', 'Apollo destination'],
     NOTE: ['Musical unit', 'Brief message', 'Take ___ of'],
-    PARK: ['Central ___', 'Leave the car', 'Ball ___'],
+    PARK: ['Leave the car', 'Ball ___', 'Central ___'],
     RAIN: ['Umbrella opener', '___ check', 'Wet weather'],
     RIDE: ['Amusement park attraction', 'Lift', 'Along for the ___'],
     ROAD: ['Highway', 'Hit the ___', 'Abbey ___'],
@@ -162,7 +166,7 @@
     LUCKY: ['Fortunate', '___ strike', 'Charm-worthy'],
     MAGIC: ['Sorcery', 'Orlando team', 'Johnson of the Lakers'],
     MONEY: ['Cash', 'Where your mouth is', 'Root of all evil, they say'],
-    MUSIC: ['Face the ___', 'Radio output', 'Notes in sequence'],
+    MUSIC: ['Radio output', 'Notes in sequence', 'Face the ___'],
     NIGHT: ['Day\'s opposite', 'Opening ___', 'Good ___'],
     OCEAN: ['Pacific or Atlantic', 'Frank of R&B', 'Vast blue'],
     PAPER: ['Rock beats it', 'Newspaper', 'Term ___'],
@@ -275,7 +279,7 @@
     GAIN: ['Increase', 'Ill-gotten ___s'],
     GAIT: ['Manner of walking', 'Stride'],
     HAIL: ['Icy precipitation', 'Greet enthusiastically'],
-    HAIR: ['Head of ___', 'Split ___s'],
+    HAIR: ['Grows on your scalp', 'Split ___s', 'Head of ___'],
     IDOL: ['Object of worship', 'Pop star'],
     INCH: ['Small unit of length', 'Move slowly'],
     JADE: ['Green gemstone', 'Weary and cynical'],
@@ -357,7 +361,7 @@
     VAGUE: ['Not specific', 'Hazy'],
     VALID: ['Legally acceptable', 'Sound, as an argument'],
     WAGER: ['Bet', 'Stake'],
-    WAGON: ['Little red ___', 'Covered pioneer vehicle'],
+    WAGON: ['Covered pioneer vehicle', 'Little red ___'],
     YACHT: ['Luxury boat', 'Regatta vessel'],
     YEAST: ['Bread-rising agent', 'Brewer\'s ingredient'],
     ZEBRA: ['Striped African animal', 'Referee\'s nickname'],
