@@ -47,7 +47,7 @@
   <div class="topbar-main">
     <div class="brand">
       <h1 class="brand-title">The Mini Crossword</h1>
-      <div class="brand-date" id="puzzleDate"></div>
+      <button class="brand-date" id="puzzleDate" title="Play a puzzle from another day"></button>
       <div class="brand-note" id="bankNote"></div>
     </div>
 
@@ -97,6 +97,9 @@
         <button data-action="check-square">Square</button>
         <button data-action="check-word">Word</button>
         <button data-action="check-puzzle">Puzzle</button>
+        <div class="menu-sep"></div>
+        <button data-action="autocheck" id="autocheckBtn">Autocheck</button>
+        <button data-action="pencil" id="pencilBtn">Pencil mode</button>
       </div>
     </div>
 
@@ -129,24 +132,6 @@
       </div>
     </div>
 
-    <button class="tool-btn icon-only" id="undoBtn" data-action="undo" title="Undo (Ctrl+Z)" aria-label="Undo">
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"></path><path d="M3.5 13a9 9 0 1 0 2.3-9.3L3 7"></path></svg>
-    </button>
-    <button class="tool-btn icon-only" id="redoBtn" data-action="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">
-      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"></path><path d="M20.5 13a9 9 0 1 1-2.3-9.3L21 7"></path></svg>
-    </button>
-
-    <button class="tool-btn toggle" id="pencilBtn" data-action="pencil" aria-pressed="false" title="Pencil mode (.)">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
-      Pencil
-    </button>
-    <button class="tool-btn toggle" id="autocheckBtn" data-action="autocheck" aria-pressed="false" title="Check squares as you type">
-      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
-      Auto
-    </button>
-
-    <button class="tool-btn" id="archiveBtn" data-action="archive">Archive</button>
-    <button class="tool-btn" id="shareBtn" data-action="share">Share</button>
     <button class="tool-btn" id="versusBtn">Versus</button>
     <button class="tool-btn solid" id="newBtn">New Puzzle</button>
   </div>
@@ -318,7 +303,7 @@
     <p id="modalBody">You solved The Mini in 0:42.</p>
     <div class="modal-actions">
       <button class="btn-primary" id="modalRematch" style="display:none;">Rematch 🔄</button>
-      <button class="btn-primary" id="modalShare" style="display:none;">Share &amp; challenge</button>
+      <button class="btn-primary" id="modalShare" style="display:none;">Copy challenge link</button>
       <button class="btn-primary" id="modalNew">New Puzzle</button>
       <button class="btn-ghost" id="modalClose">Keep Looking</button>
     </div>
@@ -344,9 +329,9 @@
 
 <div class="modal-backdrop" id="shareFallback">
   <div class="modal-card">
-    <h2>Share your result</h2>
-    <p class="vs-hint">Copy this and send it to a friend — the link opens the same puzzle.</p>
-    <textarea id="shareText" class="share-text" rows="10" readonly></textarea>
+    <h2>Challenge link</h2>
+    <p class="vs-hint">Send this to a friend — it opens this exact puzzle.</p>
+    <input id="shareText" class="share-text" readonly>
     <div class="modal-actions">
       <button class="btn-primary" id="shareCopy">Copy</button>
       <button class="btn-ghost" id="shareClose">Close</button>

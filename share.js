@@ -97,38 +97,10 @@
     } catch (e) { /* non-fatal — the link just stays in the bar */ }
   }
 
-  /* ---------------- result card ---------------- */
-
   function formatTime(total) {
     const m = Math.floor(total / 60);
     const s = Math.round(total) % 60;
     return m + ':' + (s < 10 ? '0' : '') + s;
-  }
-
-  /* A compact grid picture of how the solve went: filled-clean vs. helped.
-     `marks` is the game's per-cell mark array; black squares render blank. */
-  function emojiGrid(puzzle, marks) {
-    return puzzle.solution.map(function (row, r) {
-      return row.map(function (ch, c) {
-        if (!ch) return '⬛';
-        const mark = marks && marks[r] && marks[r][c];
-        if (mark && mark.revealed) return '🟥';
-        if (mark && mark.hinted) return '🟦';
-        return '🟨';
-      }).join('');
-    }).join('\n');
-  }
-
-  /* The text a player pastes into a chat. Keeps the link on its own line so
-     clients that auto-link do the right thing. */
-  function resultText(opts) {
-    const lines = [];
-    lines.push('The Mini · ' + (opts.difficultyLabel || 'Medium') + ' · ' + formatTime(opts.seconds) +
-      (opts.usedHelp ? ' *' : ''));
-    if (opts.grid) { lines.push(''); lines.push(opts.grid); }
-    if (opts.beat) { lines.push(''); lines.push(opts.beat); }
-    if (opts.url) { lines.push(''); lines.push('Beat my time:'); lines.push(opts.url); }
-    return lines.join('\n');
   }
 
   global.MiniShare = {
@@ -137,8 +109,6 @@
     buildUrl: buildUrl,
     readUrl: readUrl,
     clearUrl: clearUrl,
-    emojiGrid: emojiGrid,
-    resultText: resultText,
     formatTime: formatTime
   };
 })(window);

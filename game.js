@@ -115,7 +115,7 @@
       marks[r] = [];
       for (let c = 0; c < SIZE; c++) {
         entries[r][c] = puzzle.black[r][c] ? null : '';
-        marks[r][c] = { revealed: false, wrong: false, correct: false, pencil: false, hinted: false };
+        marks[r][c] = { revealed: false, wrong: false, correct: false, pencil: false };
       }
     }
     return {
@@ -199,11 +199,10 @@
       const s = blankState(data.puzzle, data.label, kind);
       s.entries = data.entries;
       s.marks = data.marks;
-      // Marks saved before pencil/hint existed lack those flags.
+      // Marks saved before pencil existed lack that flag.
       s.marks.forEach(function (row) {
         row.forEach(function (m) {
           if (m && m.pencil === undefined) m.pencil = false;
-          if (m && m.hinted === undefined) m.hinted = false;
         });
       });
       s.seconds = data.seconds || 0;
@@ -479,10 +478,7 @@
     state.marks[r][c].wrong = false;
     state.marks[r][c].correct = false;
     state.marks[r][c].pencil = ch ? !!pencil : false;
-    if (!ch) {
-      state.marks[r][c].revealed = false;
-      state.marks[r][c].hinted = false;
-    }
+    if (!ch) state.marks[r][c].revealed = false;
   }
 
   /* Autocheck marks a square the moment it is filled. It counts as help for
@@ -699,22 +695,19 @@
     showNotice(state.autocheck ? 'Autocheck on' : 'Autocheck off');
   }
 
+  /* Both toggles live in the Check menu and show the same ✓ the difficulty
+     menu uses, so no new chrome is needed in the toolbar. */
   function updateToolStates() {
     const pencilBtn = document.getElementById('pencilBtn');
     if (pencilBtn) {
-      pencilBtn.classList.toggle('active', !!(state && state.pencilMode));
+      pencilBtn.classList.toggle('checked', !!(state && state.pencilMode));
       pencilBtn.setAttribute('aria-pressed', state && state.pencilMode ? 'true' : 'false');
     }
     const autoBtn = document.getElementById('autocheckBtn');
     if (autoBtn) {
-      autoBtn.classList.toggle('active', !!(state && state.autocheck));
+      autoBtn.classList.toggle('checked', !!(state && state.autocheck));
       autoBtn.setAttribute('aria-pressed', state && state.autocheck ? 'true' : 'false');
     }
-    const undoBtn = document.getElementById('undoBtn');
-    if (undoBtn) undoBtn.disabled = !history.undo.length;
-    const redoBtn = document.getElementById('redoBtn');
-    if (redoBtn) redoBtn.disabled = !history.redo.length;
-    if (el.grid) el.grid.classList.toggle('pencil-mode', !!(state && state.pencilMode));
   }
 
   /* ---------------- check / reveal / clear ---------------- */
@@ -817,7 +810,7 @@
     pushHistory();
     targetCells(scope).forEach(function (cell) {
       state.entries[cell.r][cell.c] = '';
-      state.marks[cell.r][cell.c] = { revealed: false, wrong: false, correct: false, pencil: false, hinted: false };
+      state.marks[cell.r][cell.c] = { revealed: false, wrong: false, correct: false, pencil: false };
     });
     render();
   }
@@ -1067,11 +1060,6 @@
     state.usedHelp = true;
     state.seconds += 5;
     paintTimer();
-    // Recorded so the shared result card can distinguish a hinted word from a
-    // revealed one; it does not change how the square plays.
-    entry.cells.forEach(function (cell) {
-      if (!state.entries[cell.r][cell.c]) state.marks[cell.r][cell.c].hinted = true;
-    });
 
     if (scope === 'clue') {
       const vowels = (answer.match(/[AEIOU]/gi) || []).length;
@@ -1096,14 +1084,11 @@
     if (!action) return;
     const [verb, scope] = action.dataset.action.split('-');
 
-    // Toggles and view actions are available in a race too.
-    switch (verb) {
-      case 'undo':      undo(); return;
-      case 'redo':      redo(); return;
-      case 'pencil':    togglePencil(); return;
-      case 'autocheck': toggleAutocheck(); return;
-      case 'share':     shareResult(); return;
-      case 'archive':   openArchive(); return;
+    // Solving-mode toggles; available in a race too.
+    if (verb === 'pencil' || verb === 'autocheck') {
+      if (verb === 'pencil') togglePencil(); else toggleAutocheck();
+      document.querySelectorAll('.menu').forEach(function (m) { m.classList.remove('open'); });
+      return;
     }
 
     if (race.on) {
@@ -1159,6 +1144,9 @@
   el.nextClue.addEventListener('click', function () { jumpClue(1); });
 
   /* ---------------- archive & share wiring ---------------- */
+
+  // The date line doubles as the archive entry point (no extra toolbar button).
+  if (el.date) el.date.addEventListener('click', openArchive);
 
   const archivePlay = document.getElementById('archivePlay');
   if (archivePlay) {
@@ -1849,59 +1837,37 @@
 
   /* ---------------- sharing ---------------- */
 
-  function difficultyLabel() {
-    return DIFF_LABEL[state && state.puzzle && state.puzzle.difficulty] ||
-           DIFF_LABEL[currentDifficulty()] || 'Medium';
-  }
-
-  function buildShare() {
+  /* Just the link. It already carries the puzzle, the sender's name, and their
+     time, so the receiving app renders the challenge itself — no result blurb
+     needed in the message. */
+  function buildShareUrl() {
     if (!state) return null;
     const p = loadProfile() || defaultProfile();
-    const url = MiniShare.buildUrl(state.puzzle, {
+    return MiniShare.buildUrl(state.puzzle, {
       seconds: state.solved ? state.seconds : null,
       name: p.name || '',
       difficulty: state.puzzle.difficulty || currentDifficulty()
     });
-
-    let beat = null;
-    if (state.challenge) {
-      const delta = state.challenge.seconds - state.seconds;
-      beat = delta > 0
-        ? 'Beat ' + state.challenge.name + ' by ' + MiniShare.formatTime(delta) + '.'
-        : 'Lost to ' + state.challenge.name + ' by ' + MiniShare.formatTime(-delta) + '.';
-    }
-
-    return {
-      url: url,
-      text: MiniShare.resultText({
-        difficultyLabel: difficultyLabel(),
-        seconds: state.seconds,
-        usedHelp: state.usedHelp,
-        grid: MiniShare.emojiGrid(state.puzzle, state.marks),
-        beat: beat,
-        url: url
-      })
-    };
   }
 
   function shareResult() {
-    const payload = buildShare();
-    if (!payload) return;
+    const url = buildShareUrl();
+    if (!url) return;
 
     // navigator.share needs a user gesture and is the nicest path on mobile;
-    // fall back to the clipboard, then to a selectable prompt.
+    // fall back to the clipboard, then to a selectable field.
     if (navigator.share) {
-      navigator.share({ title: 'The Mini', text: payload.text })
-        .catch(function () { copyShare(payload.text); });
+      navigator.share({ title: 'The Mini', url: url })
+        .catch(function () { copyShare(url); });
       return;
     }
-    copyShare(payload.text);
+    copyShare(url);
   }
 
   function copyShare(text) {
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text)
-        .then(function () { showNotice('Result and challenge link copied — paste it to a friend'); })
+        .then(function () { showNotice('Challenge link copied — send it to a friend'); })
         .catch(function () { showShareFallback(text); });
       return;
     }

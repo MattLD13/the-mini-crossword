@@ -209,12 +209,22 @@ html, body {
   line-height: 1.1;
 }
 
+/* A button, but it has to read as the quiet subtitle it replaced — the archive
+   is an affordance on the date, not a control competing with the toolbar. */
 .brand-date {
+  display: block;
+  font-family: var(--font);
   font-size: 12px;
   font-weight: 500;
   color: var(--subtle);
   margin-top: 2px;
+  padding: 0;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
 }
+.brand-date:hover { color: var(--ink); text-decoration: underline; }
 
 .brand-note {
   font-size: 10.5px;
@@ -270,17 +280,6 @@ html, body {
   pointer-events: none;
 }
 
-.tool-btn.icon-only { padding: 7px 9px; }
-
-/* Pencil / Autocheck read as switches, so pressed state must be obvious at a
-   glance — a border alone is too quiet next to the plain buttons. */
-.tool-btn.toggle.active {
-  background: var(--yellow);
-  border-color: var(--yellow);
-  color: #121212;
-}
-[data-theme="dark"] .tool-btn.toggle.active { color: var(--ink); }
-
 /* ---------------- accessibility helpers ---------------- */
 /* Visible to screen readers, not to the eye. Avoids display:none, which would
    take it out of the accessibility tree entirely. */
@@ -334,13 +333,18 @@ html, body {
   margin: 14px 0 4px;
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: 12px;
-  line-height: 1.5;
   padding: 10px;
   border-radius: 6px;
   border: 1px solid var(--button-border);
   background: var(--button-bg);
   color: var(--ink);
-  resize: vertical;
+}
+
+/* Divider between the Check scopes and the solving-mode toggles below them. */
+.menu-sep {
+  height: 1px;
+  margin: 4px 0;
+  background: var(--menu-border);
 }
 
 .caret {
