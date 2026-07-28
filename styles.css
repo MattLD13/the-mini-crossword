@@ -1191,6 +1191,9 @@ body.racing #newBtn { opacity: .4; pointer-events: none; }
 }
 .history-item:last-child { border-bottom: none; }
 .history-date { font-weight: 600; color: var(--ink); }
+/* Marks a day played from the archive rather than as the live daily, so a
+   streak of red dates reads at a glance as "not today's puzzles". */
+.history-date.archive { color: #e5484d; }
 .history-meta { display: flex; align-items: center; gap: 8px; }
 .history-badge {
   font-size: 11px;

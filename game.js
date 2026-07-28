@@ -963,7 +963,7 @@
       if (btnReveal) btnReveal.innerHTML = 'Reveal (' + (race.reveals || 0) + ')<span class="caret"></span>';
       if (hintList) {
         hintList.innerHTML =
-          '<button data-action="hint-clue">Another angle (+10s)</button>' +
+          '<button data-action="hint-bookend">First &amp; last letter (+5s)</button>' +
           '<button data-action="hint-pattern">Vowel pattern (+10s)</button>' +
           '<button data-action="hint-letter">Next letter (+15s)</button>';
       }
@@ -978,7 +978,7 @@
       if (btnReveal) btnReveal.innerHTML = 'Reveal<span class="caret"></span>';
       if (hintList) {
         hintList.innerHTML =
-          '<button data-action="hint-clue">Another angle (+10s)</button>' +
+          '<button data-action="hint-bookend">First &amp; last letter (+5s)</button>' +
           '<button data-action="hint-pattern">Vowel pattern (+10s)</button>' +
           '<button data-action="hint-letter">Next letter (+15s)</button>';
       }
@@ -1072,9 +1072,8 @@
     const answer = entry.answer;
     const num = entry.num + (entry.dir === 'across' ? 'A' : 'D');
 
-    /* The old hints told you the answer's length — which the grid already
-       shows — and the vowel count twice over. These three each say something
-       you cannot read off the board, and none is charged unless it fires. */
+    /* Each hint says something you cannot read off the board, priced by how
+       much ground it gives away, and none is charged unless it fires. */
     function charge(seconds) {
       pushHistory();
       state.usedHelp = true;
@@ -1082,25 +1081,12 @@
       paintTimer();
     }
 
-    if (scope === 'clue') {
-      const alts = (MiniGenerator.cluesFor(answer) || []).filter(function (c) {
-        return c && c !== entry.clue;
-      });
-      charge(10);
-      if (alts.length) {
-        const alt = alts[Math.floor(Math.random() * alts.length)];
-        // Keep the reworded clue on the board, not just in a toast that expires.
-        entry.clue = alt;
-        buildClues();
-        render();
-        showNotice(num + ' reworded: ' + alt + ' [+10s]', 11000);
-      } else {
-        // Only about a fifth of answers carry a second clue, so this hint would
-        // otherwise be dead most of the time. Naming the opening letter is the
-        // same kind of nudge — it points at the answer without placing it, and
-        // unlike "Next letter" it leaves the square yours to fill.
-        showNotice(num + ' starts with "' + answer.charAt(0) + '" [+10s]', 11000);
-      }
+    if (scope === 'bookend') {
+      // Cheapest and always available — unlike a reworded clue, which needed a
+      // curated second clue to exist for that answer (~1 in 5 did).
+      charge(5);
+      showNotice(num + ' starts with "' + answer.charAt(0) +
+        '" and ends with "' + answer.charAt(answer.length - 1) + '" [+5s]', 11000);
       return;
     }
 
@@ -1528,7 +1514,8 @@
         seconds: state.seconds,
         difficulty: diff,
         usedHelp: !!state.usedHelp,
-        label: state.label || 'The Mini'
+        label: state.label || 'The Mini',
+        archive: kind === 'archive'
       };
 
       if (existingIdx !== -1) {
@@ -1586,7 +1573,9 @@
       const div = document.createElement('div');
       div.className = 'history-item';
       div.innerHTML =
-        '<span class="history-date">' + h.date + '</span>' +
+        '<span class="history-date' + (h.archive ? ' archive' : '') + '"' +
+          (h.archive ? ' title="Played from the archive, not the day\'s live daily"' : '') +
+          '>' + h.date + '</span>' +
         '<div class="history-meta">' +
           '<span class="history-badge">' + (h.difficulty || 'medium') + (h.usedHelp ? ' *' : '') + '</span>' +
           '<span class="history-time">' + formatTime(h.seconds || 0) + '</span>' +
