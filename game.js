@@ -5,6 +5,8 @@
   const SIZE = 5;
   const STORE_KEY = 'mini-clone-state-v1';
   const DIFF_KEY = 'mini-difficulty';
+  const AUTOCHECK_KEY = 'mini-autocheck';
+  const UNDO_LIMIT = 120;
   const DIFF_LABEL = { veryeasy: 'Very Easy', easy: 'Easy', medium: 'Medium', hard: 'Hard', extreme: 'Extreme', impossible: 'Impossible' };
 
   function currentDifficulty() {
@@ -71,8 +73,11 @@
 
   /* ---------------- puzzle setup ---------------- */
 
-  function dailySeed() {
-    const d = new Date();
+  /* Seed for any given day. The archive replays past dailies by feeding this
+     an older date — the generator is deterministic, so a date is all that is
+     needed to reproduce a puzzle exactly (given the built-in bank; see
+     makePuzzle's forceBuiltin). */
+  function seedForDate(d) {
     const str = d.getUTCFullYear() + '-' + (d.getUTCMonth() + 1) + '-' + d.getUTCDate();
     let hash = 2166136261;
     for (let i = 0; i < str.length; i++) {
@@ -80,6 +85,26 @@
       hash = Math.imul(hash, 16777619);
     }
     return (hash >>> 0);
+  }
+
+  function dailySeed() {
+    return seedForDate(new Date());
+  }
+
+  /* 'YYYY-MM-DD' -> Date at UTC midnight, so a seed does not shift by timezone. */
+  function dateFromISO(iso) {
+    const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+    if (!m) return null;
+    const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function isoOf(d) {
+    return d.toISOString().split('T')[0];
+  }
+
+  function todayISO() {
+    return isoOf(new Date());
   }
 
   function blankState(puzzle, label, kind) {
@@ -90,7 +115,7 @@
       marks[r] = [];
       for (let c = 0; c < SIZE; c++) {
         entries[r][c] = puzzle.black[r][c] ? null : '';
-        marks[r][c] = { revealed: false, wrong: false, correct: false };
+        marks[r][c] = { revealed: false, wrong: false, correct: false, pencil: false, hinted: false };
       }
     }
     return {
@@ -104,8 +129,16 @@
       seconds: 0,
       running: true,
       solved: false,
-      usedHelp: false
+      usedHelp: false,
+      pencilMode: false,
+      autocheck: savedAutocheck(),
+      challenge: null,      // { name, seconds } when playing a shared link
+      archiveDate: null     // ISO date when playing from the archive
     };
+  }
+
+  function savedAutocheck() {
+    try { return localStorage.getItem(AUTOCHECK_KEY) === '1'; } catch (e) { return false; }
   }
 
   function firstCell(puzzle) {
@@ -143,7 +176,11 @@
         marks: state.marks,
         seconds: state.seconds,
         solved: state.solved,
-        usedHelp: state.usedHelp
+        usedHelp: state.usedHelp,
+        pencilMode: state.pencilMode,
+        autocheck: state.autocheck,
+        challenge: state.challenge,
+        archiveDate: state.archiveDate
       }));
     } catch (e) { /* storage unavailable — play on */ }
   }
@@ -162,9 +199,20 @@
       const s = blankState(data.puzzle, data.label, kind);
       s.entries = data.entries;
       s.marks = data.marks;
+      // Marks saved before pencil/hint existed lack those flags.
+      s.marks.forEach(function (row) {
+        row.forEach(function (m) {
+          if (m && m.pencil === undefined) m.pencil = false;
+          if (m && m.hinted === undefined) m.hinted = false;
+        });
+      });
       s.seconds = data.seconds || 0;
       s.solved = !!data.solved;
       s.usedHelp = !!data.usedHelp;
+      s.pencilMode = !!data.pencilMode;
+      s.autocheck = data.autocheck === undefined ? savedAutocheck() : !!data.autocheck;
+      s.challenge = data.challenge || null;
+      s.archiveDate = data.archiveDate || null;
       s.running = !s.solved;
       return s;
     } catch (e) { return null; }
@@ -198,6 +246,8 @@
 
   function buildGrid() {
     el.grid.innerHTML = '';
+    el.grid.setAttribute('role', 'grid');
+    el.grid.setAttribute('aria-label', 'Crossword grid, 5 by 5');
     cells = [];
     for (let r = 0; r < SIZE; r++) {
       cells[r] = [];
@@ -206,6 +256,11 @@
         div.className = 'cell' + (state.puzzle.black[r][c] ? ' black' : '');
         div.dataset.r = r;
         div.dataset.c = c;
+        div.setAttribute('role', 'gridcell');
+        if (state.puzzle.black[r][c]) {
+          div.setAttribute('aria-label', 'Row ' + (r + 1) + ', column ' + (c + 1) + ', blocked');
+          div.setAttribute('aria-disabled', 'true');
+        }
         if (!state.puzzle.black[r][c]) {
           const num = state.puzzle.numbers[r][c];
           if (num) {
@@ -239,6 +294,21 @@
     });
   }
 
+  /* Screen readers get the active clue spoken when the cursor moves between
+     entries. Re-announcing on every keystroke within one entry would be
+     unbearable, so only a change of entry speaks. */
+  let lastAnnounced = null;
+
+  function announceClue(entry) {
+    const live = document.getElementById('clueLive');
+    if (!live) return;
+    const key = entry.id + '|' + entry.clue;
+    if (key === lastAnnounced) return;
+    lastAnnounced = key;
+    live.textContent = entry.num + ' ' + entry.dir + ', ' +
+      entry.cells.length + ' letters: ' + entry.clue;
+  }
+
   function render() {
     const entry = currentEntry();
     const highlighted = {};
@@ -254,7 +324,17 @@
         node.classList.toggle('revealed', mark.revealed);
         node.classList.toggle('wrong', mark.wrong);
         node.classList.toggle('correct', !!mark.correct && !mark.revealed);
-        node.querySelector('.letter').textContent = state.entries[r][c] || '';
+        node.classList.toggle('pencil', !!mark.pencil);
+        const value = state.entries[r][c] || '';
+        node.querySelector('.letter').textContent = value;
+
+        const num = state.puzzle.numbers[r][c];
+        node.setAttribute('aria-label',
+          'Row ' + (r + 1) + ', column ' + (c + 1) +
+          (num ? ', clue number ' + num : '') +
+          ', ' + (value ? value + (mark.pencil ? ', pencilled' : '') : 'empty') +
+          (mark.revealed ? ', revealed' : mark.wrong ? ', incorrect' : mark.correct ? ', correct' : ''));
+        node.setAttribute('aria-selected', r === state.cursor.r && c === state.cursor.c ? 'true' : 'false');
       }
     }
 
@@ -270,6 +350,7 @@
     if (entry) {
       el.cbNum.textContent = entry.num + (entry.dir === 'across' ? 'A' : 'D');
       el.cbText.textContent = entry.clue;
+      announceClue(entry);
       const li = clueNodes[entry.id];
       if (li && li.parentElement) {
         const list = li.parentElement;
@@ -335,11 +416,86 @@
 
   /* ---------------- input ---------------- */
 
-  function setLetter(r, c, ch) {
+  /* ---------------- undo / redo ----------------
+     Snapshots of the answer grid rather than a command log: a 5x5 is small
+     enough that copying it is free, and it keeps every mutation path (typing,
+     reveal, clear, hints) undoable without each one describing its inverse. */
+
+  const history = { undo: [], redo: [] };
+
+  function snapshot() {
+    return {
+      entries: state.entries.map(function (row) { return row.slice(); }),
+      marks: state.marks.map(function (row) {
+        return row.map(function (m) { return Object.assign({}, m); });
+      }),
+      cursor: { r: state.cursor.r, c: state.cursor.c },
+      dir: state.dir,
+      usedHelp: state.usedHelp,
+      seconds: state.seconds
+    };
+  }
+
+  function pushHistory() {
+    if (!state || state.solved) return;
+    history.undo.push(snapshot());
+    if (history.undo.length > UNDO_LIMIT) history.undo.shift();
+    history.redo.length = 0;                 // a new move invalidates the redo branch
+  }
+
+  function resetHistory() {
+    history.undo.length = 0;
+    history.redo.length = 0;
+  }
+
+  function restore(snap) {
+    state.entries = snap.entries;
+    state.marks = snap.marks;
+    state.cursor = snap.cursor;
+    state.dir = snap.dir;
+    state.usedHelp = snap.usedHelp;
+    state.seconds = snap.seconds;
+    paintTimer();
+    render();
+    updateToolStates();
+  }
+
+  function undo() {
+    if (!state || state.solved || !history.undo.length) return;
+    history.redo.push(snapshot());
+    restore(history.undo.pop());
+  }
+
+  function redo() {
+    if (!state || state.solved || !history.redo.length) return;
+    history.undo.push(snapshot());
+    restore(history.redo.pop());
+  }
+
+  /* ---------------- input ---------------- */
+
+  function setLetter(r, c, ch, pencil) {
     state.entries[r][c] = ch;
     state.marks[r][c].wrong = false;
     state.marks[r][c].correct = false;
-    if (!ch) state.marks[r][c].revealed = false;
+    state.marks[r][c].pencil = ch ? !!pencil : false;
+    if (!ch) {
+      state.marks[r][c].revealed = false;
+      state.marks[r][c].hinted = false;
+    }
+  }
+
+  /* Autocheck marks a square the moment it is filled. It counts as help for
+     the same reason the manual Check does — the puzzle stops being unaided. */
+  function autoCheckCell(r, c) {
+    if (!state.autocheck) return;
+    const value = state.entries[r][c];
+    const mark = state.marks[r][c];
+    if (!value || mark.revealed) return;
+    state.usedHelp = true;
+    const right = value === state.puzzle.solution[r][c];
+    mark.wrong = !right;
+    mark.correct = right;
   }
 
   /* Revealed squares, and squares confirmed correct by Check, are locked. */
@@ -355,7 +511,9 @@
     const { r, c } = state.cursor;
     if (isLocked(r, c)) { advance(entry); return; }
 
-    setLetter(r, c, ch);
+    pushHistory();
+    setLetter(r, c, ch, state.pencilMode);
+    autoCheckCell(r, c);
 
     if (checkSolved()) return;
     advance(entry);
@@ -391,6 +549,7 @@
     }
 
     if (state.entries[r][c]) {
+      pushHistory();
       setLetter(r, c, '');
       if (idx > 0) return moveTo(entry.cells[idx - 1]);
       return render();
@@ -399,6 +558,7 @@
     if (idx > 0) {
       const prev = entry.cells[idx - 1];
       if (isLocked(prev.r, prev.c)) return moveTo(prev);
+      pushHistory();
       setLetter(prev.r, prev.c, '');
       return moveTo(prev);
     }
@@ -411,6 +571,12 @@
     if (el.modal.classList.contains('on')) {
       if (e.key === 'Escape') closeModal();
       return;
+    }
+    // Undo/redo are the one place modifier chords are ours to claim.
+    if ((e.metaKey || e.ctrlKey) && !e.altKey) {
+      const k = e.key.toLowerCase();
+      if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+      if ((k === 'z' && e.shiftKey) || k === 'y') { e.preventDefault(); redo(); return; }
     }
     if (e.metaKey || e.ctrlKey || e.altKey) return;
 
@@ -442,6 +608,8 @@
         e.preventDefault(); toggleDir(); break;
       case 'Tab':
         e.preventDefault(); jumpClue(e.shiftKey ? -1 : 1); break;
+      case '.':
+        e.preventDefault(); togglePencil(); break;
     }
   });
 
@@ -497,6 +665,58 @@
     });
   }
 
+  /* ---------------- pencil / autocheck / tool state ---------------- */
+
+  function togglePencil() {
+    if (!state) return;
+    state.pencilMode = !state.pencilMode;
+    updateToolStates();
+    showNotice(state.pencilMode ? 'Pencil mode on — letters go in light' : 'Pencil mode off');
+    save();
+  }
+
+  function toggleAutocheck() {
+    if (!state) return;
+    state.autocheck = !state.autocheck;
+    try { localStorage.setItem(AUTOCHECK_KEY, state.autocheck ? '1' : '0'); } catch (e) {}
+    if (state.autocheck) {
+      // Apply immediately to what is already filled, or the setting looks inert.
+      pushHistory();
+      for (let r = 0; r < SIZE; r++)
+        for (let c = 0; c < SIZE; c++)
+          if (!state.puzzle.black[r][c]) autoCheckCell(r, c);
+    } else {
+      for (let r = 0; r < SIZE; r++) {
+        for (let c = 0; c < SIZE; c++) {
+          if (state.puzzle.black[r][c]) continue;
+          const mark = state.marks[r][c];
+          if (!mark.revealed) { mark.wrong = false; mark.correct = false; }
+        }
+      }
+    }
+    updateToolStates();
+    render();
+    showNotice(state.autocheck ? 'Autocheck on' : 'Autocheck off');
+  }
+
+  function updateToolStates() {
+    const pencilBtn = document.getElementById('pencilBtn');
+    if (pencilBtn) {
+      pencilBtn.classList.toggle('active', !!(state && state.pencilMode));
+      pencilBtn.setAttribute('aria-pressed', state && state.pencilMode ? 'true' : 'false');
+    }
+    const autoBtn = document.getElementById('autocheckBtn');
+    if (autoBtn) {
+      autoBtn.classList.toggle('active', !!(state && state.autocheck));
+      autoBtn.setAttribute('aria-pressed', state && state.autocheck ? 'true' : 'false');
+    }
+    const undoBtn = document.getElementById('undoBtn');
+    if (undoBtn) undoBtn.disabled = !history.undo.length;
+    const redoBtn = document.getElementById('redoBtn');
+    if (redoBtn) redoBtn.disabled = !history.redo.length;
+    if (el.grid) el.grid.classList.toggle('pencil-mode', !!(state && state.pencilMode));
+  }
+
   /* ---------------- check / reveal / clear ---------------- */
 
   function targetCells(scope) {
@@ -510,6 +730,7 @@
   }
 
   function check(scope) {
+    pushHistory();
     state.usedHelp = true;
     targetCells(scope).forEach(function (cell) {
       const mark = state.marks[cell.r][cell.c];
@@ -574,6 +795,7 @@
       return;
     }
 
+    pushHistory();
     state.usedHelp = true;
     const penalty = scope === 'word' ? 60 : 15;
     state.seconds += penalty;
@@ -592,9 +814,10 @@
   }
 
   function clear(scope) {
+    pushHistory();
     targetCells(scope).forEach(function (cell) {
       state.entries[cell.r][cell.c] = '';
-      state.marks[cell.r][cell.c] = { revealed: false, wrong: false, correct: false };
+      state.marks[cell.r][cell.c] = { revealed: false, wrong: false, correct: false, pencil: false, hinted: false };
     });
     render();
   }
@@ -628,6 +851,8 @@
     const rematchBtn = document.getElementById('modalRematch');
     if (rematchBtn) rematchBtn.style.display = race.on ? 'inline-block' : 'none';
     if (el.modalNew) el.modalNew.style.display = race.on ? 'none' : 'inline-block';
+    const shareModalBtn = document.getElementById('modalShare');
+    if (shareModalBtn) shareModalBtn.style.display = 'inline-block';
 
     if (race.on) {
       const me = Versus.me();
@@ -655,7 +880,21 @@
       el.modal.classList.add('on');
       return;
     }
-    if (state.usedHelp) {
+    if (state.challenge) {
+      // Playing someone else's link: the headline is the head-to-head result.
+      const delta = state.challenge.seconds - state.seconds;
+      const won = delta > 0;
+      el.modalMark.textContent = won ? '🏆' : '⏱';
+      el.modalMark.style.color = won ? '#f5c518' : '#888';
+      el.modalTitle.textContent = won
+        ? 'You beat ' + state.challenge.name + '!'
+        : 'So close';
+      el.modalBody.textContent = won
+        ? 'You solved it in ' + formatTime(state.seconds) + ' — ' +
+          formatTime(delta) + ' faster than ' + state.challenge.name + '.'
+        : state.challenge.name + ' finished in ' + formatTime(state.challenge.seconds) +
+          '; you took ' + formatTime(state.seconds) + '.';
+    } else if (state.usedHelp) {
       el.modalMark.textContent = '✓';
       el.modalMark.style.color = '#2ca02c';
       el.modalTitle.textContent = 'Puzzle complete';
@@ -824,9 +1063,15 @@
     const answer = entry.answer;
     const num = entry.num + (entry.dir === 'across' ? 'A' : 'D');
 
+    pushHistory();
     state.usedHelp = true;
     state.seconds += 5;
     paintTimer();
+    // Recorded so the shared result card can distinguish a hinted word from a
+    // revealed one; it does not change how the square plays.
+    entry.cells.forEach(function (cell) {
+      if (!state.entries[cell.r][cell.c]) state.marks[cell.r][cell.c].hinted = true;
+    });
 
     if (scope === 'clue') {
       const vowels = (answer.match(/[AEIOU]/gi) || []).length;
@@ -850,6 +1095,17 @@
     const action = e.target.closest('[data-action]');
     if (!action) return;
     const [verb, scope] = action.dataset.action.split('-');
+
+    // Toggles and view actions are available in a race too.
+    switch (verb) {
+      case 'undo':      undo(); return;
+      case 'redo':      redo(); return;
+      case 'pencil':    togglePencil(); return;
+      case 'autocheck': toggleAutocheck(); return;
+      case 'share':     shareResult(); return;
+      case 'archive':   openArchive(); return;
+    }
+
     if (race.on) {
       if (verb === 'check') {
         if ((race.checks || 0) <= 0) {
@@ -901,6 +1157,53 @@
 
   el.prevClue.addEventListener('click', function () { jumpClue(-1); });
   el.nextClue.addEventListener('click', function () { jumpClue(1); });
+
+  /* ---------------- archive & share wiring ---------------- */
+
+  const archivePlay = document.getElementById('archivePlay');
+  if (archivePlay) {
+    archivePlay.addEventListener('click', function () {
+      const input = document.getElementById('archiveDate');
+      playArchive(input ? input.value : '');
+    });
+  }
+  const archiveToday = document.getElementById('archiveToday');
+  if (archiveToday) {
+    archiveToday.addEventListener('click', function () { playArchive(todayISO()); });
+  }
+  const archiveRandom = document.getElementById('archiveRandom');
+  if (archiveRandom) {
+    archiveRandom.addEventListener('click', function () {
+      const start = dateFromISO(ARCHIVE_START).getTime();
+      const end = Date.now();
+      playArchive(isoOf(new Date(start + Math.random() * (end - start))));
+    });
+  }
+  const archiveClose = document.getElementById('archiveClose');
+  if (archiveClose) archiveClose.addEventListener('click', closeArchive);
+
+  const modalShareBtn = document.getElementById('modalShare');
+  if (modalShareBtn) modalShareBtn.addEventListener('click', shareResult);
+
+  const shareCopyBtn = document.getElementById('shareCopy');
+  if (shareCopyBtn) {
+    shareCopyBtn.addEventListener('click', function () {
+      const area = document.getElementById('shareText');
+      if (!area) return;
+      area.select();
+      // execCommand is deprecated but is the only copy path left when the
+      // Clipboard API is blocked (insecure origin, denied permission).
+      try { document.execCommand('copy'); showNotice('Copied'); }
+      catch (e) { showNotice('Press Ctrl+C to copy'); }
+    });
+  }
+  const shareCloseBtn = document.getElementById('shareClose');
+  if (shareCloseBtn) {
+    shareCloseBtn.addEventListener('click', function () {
+      const box = document.getElementById('shareFallback');
+      if (box) box.classList.remove('on');
+    });
+  }
   el.newBtn.addEventListener('click', function () { newPuzzle(); });
   el.modalNew.addEventListener('click', function () { closeModal(); newPuzzle(); });
   el.modalClose.addEventListener('click', closeModal);
@@ -1183,7 +1486,8 @@
           bestStreak: p.bestStreak || 0,
           seconds: state.seconds,
           difficulty: diff,
-          date: today
+          date: today,
+          token: scoreToken
         })
       }).catch(function () {});
     } catch (e) {}
@@ -1440,13 +1744,25 @@
     });
   }
 
+  // Just long enough that a warm start doesn't flash the loader for a single
+  // frame. Anything beyond this is latency we'd be inventing.
+  const LOADER_MIN_MS = 150;
+  const LOADER_MAX_MS = 2000;
+  let loaderShownAt = 0;
+  let loaderDismissed = false;
+
   function dismissLoader() {
+    if (loaderDismissed) return;              // rAF and the backstop can race
     const loader = document.getElementById('appLoader');
     if (!loader) return;
-    loader.classList.add('fade-out');
+    loaderDismissed = true;
+    const held = Date.now() - loaderShownAt;
     setTimeout(function () {
-      if (loader.parentNode) loader.parentNode.removeChild(loader);
-    }, 450);
+      loader.classList.add('fade-out');
+      setTimeout(function () {
+        if (loader.parentNode) loader.parentNode.removeChild(loader);
+      }, 250);                                 // outlasts the 0.2s CSS fade
+    }, Math.max(0, LOADER_MIN_MS - held));
   }
 
   /* ---------------- boot ---------------- */
@@ -1455,11 +1771,189 @@
     state = next;
     el.date.textContent = label || state.label || todayLabel();
     el.grid.classList.remove('solved');
+    resetHistory();
     buildGrid();
     buildClues();
     render();
+    updateToolStates();
+    renderChallengeBanner();
+    requestScoreToken();
     if (state.solved) { stopTimer(); paintTimer(); }
     else startTimer();
+  }
+
+  /* ---------------- score token ----------------
+     Proves to the server that real time elapsed between starting a puzzle and
+     claiming a solve. Best-effort: if it fails the score simply will not be
+     accepted onto the global board, and local stats are unaffected. */
+
+  let scoreToken = null;
+
+  function requestScoreToken() {
+    scoreToken = null;
+    if (!state || state.kind === 'versus') return;
+    const diff = currentDifficulty();
+    fetch('/api/score-token?difficulty=' + encodeURIComponent(diff))
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (data) { if (data && data.token) scoreToken = data.token; })
+      .catch(function () { /* offline — local play is unaffected */ });
+  }
+
+  /* ---------------- archive ---------------- */
+
+  const ARCHIVE_START = '2024-01-01';   // nothing meaningful predates the app
+
+  function playArchive(iso) {
+    const d = dateFromISO(iso);
+    if (!d) { showNotice('Pick a valid date'); return; }
+    if (iso > todayISO()) { showNotice('That day has not happened yet'); return; }
+
+    if (race.on) { Versus.leave(); endRace(); }
+    const difficulty = currentDifficulty();
+    let puzzle;
+    try {
+      // forceBuiltin: the archive must reproduce the same grid on every device
+      // and every day, which only the bundled bank guarantees.
+      puzzle = makePuzzle(seedForDate(d), difficulty, true);
+    } catch (e) {
+      showNotice('Could not build that puzzle: ' + e.message);
+      return;
+    }
+    const pretty = d.toLocaleDateString(undefined, {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC'
+    });
+    const label = pretty + ' · ' + (DIFF_LABEL[difficulty] || 'Medium') + ' · archive';
+    const next = blankState(puzzle, label, 'archive');
+    next.archiveDate = iso;
+    mount(next, label);
+    save();
+    closeArchive();
+  }
+
+  function openArchive() {
+    const modal = document.getElementById('archiveModal');
+    if (!modal) return;
+    const input = document.getElementById('archiveDate');
+    if (input) {
+      input.max = todayISO();
+      input.min = ARCHIVE_START;
+      if (!input.value) input.value = state && state.archiveDate ? state.archiveDate : todayISO();
+    }
+    modal.classList.add('on');
+  }
+
+  function closeArchive() {
+    const modal = document.getElementById('archiveModal');
+    if (modal) modal.classList.remove('on');
+  }
+
+  /* ---------------- sharing ---------------- */
+
+  function difficultyLabel() {
+    return DIFF_LABEL[state && state.puzzle && state.puzzle.difficulty] ||
+           DIFF_LABEL[currentDifficulty()] || 'Medium';
+  }
+
+  function buildShare() {
+    if (!state) return null;
+    const p = loadProfile() || defaultProfile();
+    const url = MiniShare.buildUrl(state.puzzle, {
+      seconds: state.solved ? state.seconds : null,
+      name: p.name || '',
+      difficulty: state.puzzle.difficulty || currentDifficulty()
+    });
+
+    let beat = null;
+    if (state.challenge) {
+      const delta = state.challenge.seconds - state.seconds;
+      beat = delta > 0
+        ? 'Beat ' + state.challenge.name + ' by ' + MiniShare.formatTime(delta) + '.'
+        : 'Lost to ' + state.challenge.name + ' by ' + MiniShare.formatTime(-delta) + '.';
+    }
+
+    return {
+      url: url,
+      text: MiniShare.resultText({
+        difficultyLabel: difficultyLabel(),
+        seconds: state.seconds,
+        usedHelp: state.usedHelp,
+        grid: MiniShare.emojiGrid(state.puzzle, state.marks),
+        beat: beat,
+        url: url
+      })
+    };
+  }
+
+  function shareResult() {
+    const payload = buildShare();
+    if (!payload) return;
+
+    // navigator.share needs a user gesture and is the nicest path on mobile;
+    // fall back to the clipboard, then to a selectable prompt.
+    if (navigator.share) {
+      navigator.share({ title: 'The Mini', text: payload.text })
+        .catch(function () { copyShare(payload.text); });
+      return;
+    }
+    copyShare(payload.text);
+  }
+
+  function copyShare(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text)
+        .then(function () { showNotice('Result and challenge link copied — paste it to a friend'); })
+        .catch(function () { showShareFallback(text); });
+      return;
+    }
+    showShareFallback(text);
+  }
+
+  function showShareFallback(text) {
+    const box = document.getElementById('shareFallback');
+    const area = document.getElementById('shareText');
+    if (!box || !area) { showNotice('Copy failed'); return; }
+    area.value = text;
+    box.classList.add('on');
+    area.focus();
+    area.select();
+  }
+
+  /* A link puts the sender's puzzle and time into the recipient's app. */
+  function loadSharedFromUrl() {
+    const code = MiniShare.readUrl();
+    if (!code) return false;
+
+    const parsed = MiniShare.decode(code);
+    // Strip the fragment either way, so a reload does not resurrect a
+    // challenge the player has already moved on from.
+    MiniShare.clearUrl();
+    if (!parsed) { showNotice('That challenge link could not be read'); return false; }
+
+    const who = parsed.challenge ? parsed.challenge.name : 'A friend';
+    const label = 'Challenge from ' + who + ' · ' + (DIFF_LABEL[parsed.difficulty] || 'Medium');
+    const next = blankState(parsed.puzzle, label, 'shared');
+    next.challenge = parsed.challenge;
+    mount(next, label);
+    save();
+    return true;
+  }
+
+  /* Clicking a challenge link while the app is already open is a same-document
+     fragment navigation — no reload, so boot() never runs again. Without this
+     the link would appear to do nothing. */
+  window.addEventListener('hashchange', function () {
+    if (!MiniShare.readUrl()) return;
+    if (race.on) { Versus.leave(); endRace(); }
+    loadSharedFromUrl();
+  });
+
+  function renderChallengeBanner() {
+    const banner = document.getElementById('challengeBanner');
+    if (!banner) return;
+    if (!state || !state.challenge) { banner.classList.remove('on'); return; }
+    banner.classList.add('on');
+    banner.textContent = state.challenge.name + ' solved this in ' +
+      MiniShare.formatTime(state.challenge.seconds) + ' — beat it.';
   }
 
   function isDailyCompleted(difficulty) {
@@ -1493,26 +1987,42 @@
   }
 
   function startPuzzle() {
+    // A challenge link wins over saved progress: the player clicked it just now.
+    if (loadSharedFromUrl()) return;
     const saved = load();
     if (saved) { mount(saved, saved.label); return; }
     newPuzzle();
   }
 
   function noteSource(source, error) {
-    const note = document.getElementById('bankNote');
-    if (!note) return;
     const total = MiniGenerator.stats().total;
     const origin = source === 'datamuse' ? 'Datamuse dictionary'
       : source === 'cache' ? 'Datamuse dictionary (cached)'
       : source === 'fetching' ? 'built-in list · fetching more…'
       : 'built-in word list (offline)';
-    note.textContent = total.toLocaleString() + ' words · ' + origin;
-    note.title = error ? 'Dictionary fetch failed: ' + error : '';
+    const text = total.toLocaleString() + ' words · ' + origin;
+
+    const note = document.getElementById('bankNote');
+    if (note) {
+      note.textContent = text;
+      note.title = error ? 'Dictionary fetch failed: ' + error : '';
+    }
+
+    // Mirror into the loader while it's still up, so it reports the real
+    // dictionary state instead of a hardcoded "Loading puzzle…".
+    const status = document.getElementById('loaderStatus');
+    if (status) status.textContent = text;
   }
 
   function boot() {
     // Never block play on the network: start from the cache (or the bundled
     // bank) and swap in the larger vocabulary whenever it lands.
+    loaderShownAt = Date.now();
+
+    // Curated clues outrank whatever definitions the active bank carries, so
+    // install them before the first puzzle is built.
+    if (window.CURATED_CLUES) MiniGenerator.setClueOverrides(window.CURATED_CLUES);
+
     let source = 'builtin';
     const cached = WordSource.cached();
     if (cached && MiniGenerator.useBank(cached.bank)) source = 'cache';
@@ -1521,7 +2031,21 @@
     initTheme();
     startPuzzle();
     noteSource(source === 'cache' ? 'cache' : 'fetching');
-    setTimeout(dismissLoader, 300);
+
+    // startPuzzle() is synchronous, so the board is built by now — dismiss as
+    // soon as it has actually painted rather than after an arbitrary delay.
+    // Two frames: the first schedules the paint, the second runs after it.
+    if (document.hidden) {
+      // Background tabs never paint, so rAF would not fire at all and the
+      // loader would sit there until the tab gained focus. Nothing is visible
+      // to flash, so drop it now.
+      dismissLoader();
+    } else {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(dismissLoader);
+      });
+    }
+    setTimeout(dismissLoader, LOADER_MAX_MS);  // backstop if rAF never runs
 
     WordSource.refresh().then(function (result) {
       if (!result) return;                       // cache already fresh

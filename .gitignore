@@ -1,0 +1,8 @@
+# Local persistence for the file store backend (scores, rooms, signing secret).
+# Runtime data, not source — and mini_score-secret.json must never be committed.
+.data/
+
+node_modules/
+*.log
+.DS_Store
+.vercel

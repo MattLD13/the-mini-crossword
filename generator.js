@@ -98,6 +98,17 @@
   const CLUES = function () { return active.clues; };
   const BY_LEN = function () { return active.byLen; };
 
+  /* Hand-written crossword clues that take priority over the dictionary
+     definitions in whichever bank is active. Populated from clues.js; absent
+     answers just fall through to the bank. */
+  let clueOverrides = Object.create(null);
+
+  function cluesFor(word) {
+    const curated = clueOverrides[word];
+    if (curated && curated.length) return curated;
+    return CLUES()[word] || ['A crossword answer'];
+  }
+
   /* ---------- seeded RNG ---------- */
   function mulberry32(seed) {
     let a = seed >>> 0;
@@ -308,7 +319,7 @@
 
       const entries = built.slots.map(function (slot, si) {
         const word = solution[si];
-        const options = CLUES()[word] || ['A crossword answer'];
+        const options = cluesFor(word);
         let pickedClue;
         if (difficulty === 'impossible' && options.length > 1) {
           pickedClue = options[options.length - 1];
@@ -342,8 +353,82 @@
     return null;
   }
 
+  /* Rebuild a puzzle from a solution grid plus its clues.
+
+     A share link cannot just carry the seed: generate() fills from `active`,
+     which is whichever bank the player happens to have loaded (built-in vs.
+     a Datamuse harvest that varies per fetch). The same seed therefore yields
+     different puzzles on different devices. Carrying the grid itself is the
+     only way a recipient plays the puzzle the sender actually solved — the
+     same reason Versus ships the whole puzzle object to the room. */
+  function fromGrid(rows, clues, meta) {
+    if (!Array.isArray(rows) || rows.length !== SIZE) return null;
+
+    const upper = rows.map(function (row) { return String(row).toUpperCase(); });
+    if (upper.some(function (row) { return row.length !== SIZE; })) return null;
+
+    // Anything that is not a letter is a black square.
+    const built = buildSlots(upper.map(function (row) {
+      return row.replace(/[^A-Z]/g, '#');
+    }));
+    if (!built) return null;
+
+    const grid = [];
+    for (let r = 0; r < SIZE; r++) {
+      grid[r] = [];
+      for (let c = 0; c < SIZE; c++) {
+        grid[r][c] = built.black[r][c] ? null : upper[r][c];
+      }
+    }
+
+    const byKey = Object.create(null);
+    (clues || []).forEach(function (c) {
+      if (!c || c.length < 3) return;
+      byKey[String(c[1]).charAt(0).toLowerCase() + c[0]] = String(c[2]);
+    });
+
+    const entries = built.slots.map(function (slot) {
+      const word = slot.cells.map(function (cell) { return grid[cell.r][cell.c]; }).join('');
+      const shared = byKey[slot.dir.charAt(0) + slot.num];
+      return {
+        id: slot.id,
+        num: slot.num,
+        dir: slot.dir,
+        answer: word,
+        // Fall back to the local bank only if the link omitted a clue.
+        clue: shared || cluesFor(word)[0],
+        cells: slot.cells
+      };
+    });
+    entries.sort(function (a, b) {
+      if (a.dir !== b.dir) return a.dir === 'across' ? -1 : 1;
+      return a.num - b.num;
+    });
+
+    return {
+      seed: (meta && meta.seed) || 0,
+      difficulty: (meta && meta.difficulty) || 'medium',
+      size: SIZE,
+      solution: grid,
+      black: built.black,
+      numbers: built.numbers,
+      entries: entries
+    };
+  }
+
   global.MiniGenerator = {
     generate: generate,
+    fromGrid: fromGrid,
+    setClueOverrides: function (map) {
+      clueOverrides = Object.create(null);
+      Object.keys(map || {}).forEach(function (word) {
+        const w = String(word).toUpperCase();
+        const list = (map[word] || []).filter(Boolean);
+        if (list.length) clueOverrides[w] = list;
+      });
+      // Cached tiers hold no clue text, so nothing else needs invalidating.
+      return Object.keys(clueOverrides).length;
+    },
     makeBank: makeBank,
     addWord: addWord,
     ingest: ingest,

@@ -6,8 +6,15 @@
 <title>The Mini Crossword</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<!-- Loaded async: a slow or unreachable fonts.googleapis.com must never delay
+     first paint. The fallback stack in --font carries the UI until it lands. -->
+<link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" onload="this.media='all';this.onload=null">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Libre+Franklin:wght@400;500;600;700;800&display=swap" rel="stylesheet"></noscript>
+<link rel="stylesheet" href="styles.css?v=3">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="theme-color" content="#ffda00">
 <script>
   (function() {
     try {
@@ -20,25 +27,26 @@
 </head>
 <body>
 
-<div id="appLoader" class="app-loader">
+<div id="appLoader" class="app-loader" role="status" aria-live="polite">
   <div class="loader-content">
-    <div class="loader-grid">
+    <!-- Decorative: the cells spell MINI visually, but reading them out
+         letter-by-letter is noise. Only the status line is announced. -->
+    <div class="loader-grid" aria-hidden="true">
       <div class="loader-cell black"></div>
-      <div class="loader-cell letter-m">M</div>
-      <div class="loader-cell letter-n">N</div>
-      <div class="loader-cell letter-i">I</div>
-      <div class="loader-cell letter-i2">I</div>
+      <div class="loader-cell">M</div>
+      <div class="loader-cell">I</div>
+      <div class="loader-cell">N</div>
+      <div class="loader-cell">I</div>
     </div>
-    <h1 class="loader-title">The Mini</h1>
-    <div class="loader-spinner"></div>
-    <div class="loader-status" id="loaderStatus">Loading puzzle...</div>
+    <div class="loader-title" aria-hidden="true">The Mini</div>
+    <div class="loader-status" id="loaderStatus">Loading puzzle…</div>
   </div>
 </div>
 
 <header class="topbar">
   <div class="topbar-main">
     <div class="brand">
-      <div class="brand-title">The Mini Crossword</div>
+      <h1 class="brand-title">The Mini Crossword</h1>
       <div class="brand-date" id="puzzleDate"></div>
       <div class="brand-note" id="bankNote"></div>
     </div>
@@ -121,10 +129,31 @@
       </div>
     </div>
 
+    <button class="tool-btn icon-only" id="undoBtn" data-action="undo" title="Undo (Ctrl+Z)" aria-label="Undo">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"></path><path d="M3.5 13a9 9 0 1 0 2.3-9.3L3 7"></path></svg>
+    </button>
+    <button class="tool-btn icon-only" id="redoBtn" data-action="redo" title="Redo (Ctrl+Shift+Z)" aria-label="Redo">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 7v6h-6"></path><path d="M20.5 13a9 9 0 1 1-2.3-9.3L21 7"></path></svg>
+    </button>
+
+    <button class="tool-btn toggle" id="pencilBtn" data-action="pencil" aria-pressed="false" title="Pencil mode (.)">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"></path></svg>
+      Pencil
+    </button>
+    <button class="tool-btn toggle" id="autocheckBtn" data-action="autocheck" aria-pressed="false" title="Check squares as you type">
+      <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>
+      Auto
+    </button>
+
+    <button class="tool-btn" id="archiveBtn" data-action="archive">Archive</button>
+    <button class="tool-btn" id="shareBtn" data-action="share">Share</button>
     <button class="tool-btn" id="versusBtn">Versus</button>
     <button class="tool-btn solid" id="newBtn">New Puzzle</button>
   </div>
 </header>
+
+<div class="challenge-banner" id="challengeBanner"></div>
+<div class="sr-only" id="clueLive" role="status" aria-live="polite"></div>
 
 <div class="race-strip" id="raceStrip">
   <div class="race-head">
@@ -289,8 +318,38 @@
     <p id="modalBody">You solved The Mini in 0:42.</p>
     <div class="modal-actions">
       <button class="btn-primary" id="modalRematch" style="display:none;">Rematch 🔄</button>
+      <button class="btn-primary" id="modalShare" style="display:none;">Share &amp; challenge</button>
       <button class="btn-primary" id="modalNew">New Puzzle</button>
       <button class="btn-ghost" id="modalClose">Keep Looking</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="archiveModal">
+  <div class="modal-card">
+    <h2>Puzzle archive</h2>
+    <p class="vs-hint">Every past day has its own puzzle. Pick a date to play it at your current difficulty.</p>
+    <label class="archive-field">
+      <span>Date</span>
+      <input type="date" id="archiveDate">
+    </label>
+    <div class="modal-actions">
+      <button class="btn-primary" id="archivePlay">Play that day</button>
+      <button class="btn-ghost" id="archiveRandom">Surprise me</button>
+      <button class="btn-ghost" id="archiveToday">Today</button>
+      <button class="btn-ghost" id="archiveClose">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-backdrop" id="shareFallback">
+  <div class="modal-card">
+    <h2>Share your result</h2>
+    <p class="vs-hint">Copy this and send it to a friend — the link opens the same puzzle.</p>
+    <textarea id="shareText" class="share-text" rows="10" readonly></textarea>
+    <div class="modal-actions">
+      <button class="btn-primary" id="shareCopy">Copy</button>
+      <button class="btn-ghost" id="shareClose">Close</button>
     </div>
   </div>
 </div>
@@ -333,13 +392,25 @@
   </div>
 </div>
 
-<script src="words.js?v=2"></script>
-<script src="words4.js?v=2"></script>
-<script src="words5a.js?v=2"></script>
-<script src="words5b.js?v=2"></script>
-<script src="generator.js?v=2"></script>
-<script src="wordsource.js?v=2"></script>
-<script src="versus.js?v=2"></script>
-<script src="game.js?v=2"></script>
+<script src="words.js?v=3"></script>
+<script src="words4.js?v=3"></script>
+<script src="words5a.js?v=3"></script>
+<script src="words5b.js?v=3"></script>
+<script src="clues.js?v=3"></script>
+<script src="generator.js?v=3"></script>
+<script src="wordsource.js?v=3"></script>
+<script src="share.js?v=3"></script>
+<script src="versus.js?v=3"></script>
+<script src="game.js?v=3"></script>
+<script>
+  // Registered after load so it never competes with the first paint.
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function (err) {
+        console.warn('Service worker registration failed:', err.message);
+      });
+    });
+  }
+</script>
 </body>
 </html>
